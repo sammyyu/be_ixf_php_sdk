@@ -66,7 +66,7 @@ class BEIXFClient {
 
     private $_get_capsule_api_url = null;
     private $capsule = null;
-    private $capsule_response = null;
+    private $_capsule_response = null;
 
     private $debugMode = false;
 
@@ -138,6 +138,15 @@ class BEIXFClient {
             $urlBase .= "/";
         }
 
+        $connect_timeout = $this->config[self::$CONNECT_TIMEOUT_CONFIG];
+        $socket_timeout = $this->config[self::$SOCKET_TIMEOUT_CONFIG];
+        $user_agent = $_SERVER['HTTP_USER_AGENT'];
+        // raise timeout if it is crawler user agent
+        if (IXFSDKUtils::userAgentMatchesRegex($user_agent, $this->config[self::$CRAWLER_USER_AGENTS_CONFIG])) {
+            $connect_timeout = $this->config[self::$CRAWLER_CONNECT_TIMEOUT_CONFIG];
+            $socket_timeout = $this->config[self::$CRAWLER_SOCKET_TIMEOUT_CONFIG];
+        }
+
         $this->_original_url = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
         $this->_normalized_url = $this->_original_url;
         // #1 one construct the canonical URL
@@ -154,19 +163,16 @@ class BEIXFClient {
         // #3 calculate the page hash
         $page_hash = IXFSDKUtils::getPageHash($this->_normalized_url);
 
+        $request_params = array('client' => self::$CLIENT_NAME,
+            'client_version' => self::$CLIENT_VERSION,
+            'base_url' => $this->_normalized_url,
+            'orig_url' => $this->_original_url,
+            'user_agent' => $user_agent,
+        );
         $this->_get_capsule_api_url = $urlBase . 'api/ixf/' . self::$API_VERSION . '/get_capsule/' . $this->config[self::$ACCOUNT_ID_CONFIG] .
-            '/' . $page_hash;
+        '/' . $page_hash . '?' . http_build_query($request_params);
         $startTime = round(microtime(true) * 1000);
         $ch = curl_init();
-
-        $connect_timeout = $this->config[self::$CONNECT_TIMEOUT_CONFIG];
-        $socket_timeout = $this->config[self::$SOCKET_TIMEOUT_CONFIG];
-        $user_agent = $_SERVER['HTTP_USER_AGENT'];
-        // raise timeout if it is crawler user agent
-        if (IXFSDKUtils::userAgentMatchesRegex($user_agent, $this->config[self::$CRAWLER_USER_AGENTS_CONFIG])) {
-            $connect_timeout = $this->config[self::$CRAWLER_CONNECT_TIMEOUT_CONFIG];
-            $socket_timeout = $this->config[self::$CRAWLER_SOCKET_TIMEOUT_CONFIG];
-        }
 
         // Set URL to download
         curl_setopt($ch, CURLOPT_URL, $this->_get_capsule_api_url);
@@ -321,6 +327,12 @@ class BEIXFClient {
         $publishedTime = round(microtime(true) * 1000);
 
         if ($this->capsule) {
+            $redirectNode = $this->capsule->getRedirectNode();
+            if ($redirectNode != null) {
+                http_response_code($redirectNode->getRedirectType());
+                header("Location: " . $redirectNode->getRedirectURL());
+            }
+
             $initStringNode = $this->capsule->getInitStringNode();
             if ($initStringNode) {
                 $sb .= $initStringNode->getContent();
@@ -339,8 +351,8 @@ class BEIXFClient {
 
     }
 
-    public function getFeatureString($node_type, $target_div_id) {
-        $sb = "";
+    public function getFeatureString($node_type, $feature_type) {
+        $sb = null;
         $startTime = round(microtime(true) * 1000);
         $publishingEngine = self::$DEFAULT_PUBLISHING_ENGINE;
         $engineVersion = self::$DEFAULT_ENGINE_VERSION;
@@ -348,33 +360,27 @@ class BEIXFClient {
         $publishedTime = round(microtime(true) * 1000);
 
         if ($this->capsule) {
-            $node = $this->capsule->getLinkBlockNode($target_div_id);
+            $node = $this->capsule->getBodyStringNode($feature_type);
             if ($node) {
-                $sb .= $node->getContent();
+                $sb = $node->getContent();
                 $publishedTime = $node->getDatePublished();
                 $publishingEngine = $node->getPublishingEngine();
                 $engineVersion = $node->getPublishingEngine();
                 $metaString = $node->getMetaString();
             } else {
                 array_push($this->errorMessages,
-                    'Capsule missing ' . $node_type . ' node, target_div_id ' . $target_div_id);
+                    'Capsule missing ' . $node_type . ' node, feature_type ' . $feature_type);
             }
         }
 
-        $elapsedTime = round(microtime(true) * 1000) - $startTime;
-        $sb .= $this->generateEndingTags(self::$OTHER_BLOCKTYPE, $node_type, $publishingEngine, $engineVersion, $metaString, $publishedTime, $elapsedTime);
+        if (isset($sb)) {
+            $elapsedTime = round(microtime(true) * 1000) - $startTime;
+            $sb .= $this->generateEndingTags(self::$OTHER_BLOCKTYPE, $node_type, $publishingEngine, $engineVersion, $metaString, $publishedTime, $elapsedTime);
+        }
         return $sb;
     }
 
     public function close() {
-        if ($this->capsule) {
-            $redirectNode = $this->capsule->getRedirectNode();
-            if ($redirectNode != null) {
-                header("Location: " . $redirectNode->getRedirectURL());
-//                this . _servlet_response . setStatus(redirectNode . getRedirectType());
-            }
-        }
-
         $sb = "";
         $sb .= $this->generateEndingTags(self::$CLOSE_BLOCKTYPE, null, null, null, null, 0, 0);
         return $sb;
@@ -413,8 +419,8 @@ function deserializeCapsuleJson($capsule_json) {
             $node->setContent($node_obj->content);
         }
 
-        if (isset($node_obj->targeted_id)) {
-            $node->setTargetedId($node_obj->targeted_id);
+        if (isset($node_obj->feature_type)) {
+            $node->setFeatureType($node_obj->feature_type);
         }
 
         if (isset($node_obj->redirect_type)) {
@@ -439,15 +445,15 @@ class Node {
     protected $engineVersion;
     protected $metaString;
     protected $content;
-    // only applies to linkblock type
-    protected $targeted_id;
+    // only applies to bodystr type
+    protected $feature_type;
     // only applies to redirect type
     private $redirectType;
     private $redirectURL;
 
     public static $INITSTR_NODE_TYPE = "initstr";
     public static $REDIRECT_NODE_TYPE = "redirect";
-    public static $LINKBLOCK_NODE_TYPE = "linkblock";
+    public static $BODYSTR_NODE_TYPE = "bodystr";
 
     public function __construct() {
     }
@@ -460,12 +466,12 @@ class Node {
         $this->type = $type;
     }
 
-    public function getTargetedId() {
-        return $this->targeted_id;
+    public function getFeatureType() {
+        return $this->feature_type;
     }
 
-    public function setTargetedId($targeted_id) {
-        $this->targeted_id = $targeted_id;
+    public function setFeatureType($feature_type) {
+        $this->feature_type = $feature_type;
     }
 
     public function getDateCreated() {
@@ -555,12 +561,12 @@ class Capsule {
         return null;
     }
 
-    public function getLinkBlockNode($targetedId) {
+    public function getBodyStringNode($feature_type) {
         if ($this->capsuleNodeList == null) {
             return null;
         }
         foreach ($this->capsuleNodeList as $node) {
-            if ($node->getType() == Node::$LINKBLOCK_NODE_TYPE && $node->getTargetedId() == $targetedId) {
+            if ($node->getType() == Node::$BODYSTR_NODE_TYPE && $node->getFeatureType() == $feature_type) {
                 return $node;
             }
         }
@@ -685,9 +691,26 @@ class IXFSDKUtils {
         return $arr;
     }
 
+    /**
+     * Replace the host in a URL
+     *
+     * @param canonicalHost can be in host or host:port form
+     */
     public static function overrideHostInURL($url, $canonicalHost) {
+        $parts = explode(":", $canonicalHost);
+        $canonicalPort = -1;
+        if (count($parts) == 2) {
+            $canonicalHost = $parts[0];
+            $canonicalPort = $parts[1];
+        }
         $url_parts = parse_url($url);
         $url_parts['host'] = $canonicalHost;
+        if ($canonicalPort > 0) {
+            if (!(($url_parts['scheme'] == 'http' && $canonicalPort == 80) ||
+                ($url_parts['scheme'] == 'https' && $canonicalPort == 443))) {
+                $url_parts['port'] = $canonicalPort;
+            }
+        }
         $url = (isset($url_parts['scheme']) ? "{$url_parts['scheme']}:" : '') .
             ((isset($url_parts['user']) || isset($url_parts['host'])) ? '//' : '') .
             (isset($url_parts['user']) ? "{$url_parts['user']}" : '') .

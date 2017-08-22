@@ -1,8 +1,7 @@
 <?php
 require 'be_ixf_client.php';
-$be_ixf_config = array();
-// $be_ixf_config[BEIXFClient::$CANONICAL_PAGE_CONFIG] = 'http://www.test.com/ixf-sdk/index.jsp';
-$be_ixf_config[BEIXFClient::$CANONICAL_HOST_CONFIG] = 'www.test.com';
+$be_ixf_config = array(
+);
 $client = new BEIXFClient($be_ixf_config);
 ?>
 
@@ -21,8 +20,18 @@ if (get_cfg_var("date.timezone") == "0" || get_cfg_var("date.timezone") == "UTC"
 <p>Current time is <?php echo date("Y-m-d h:i:sa") ?></p>
 <div id="be_sdkms_linkblock">
 
-<?php echo $linkblock_content = $client->getFeatureString("bodystr", "be_sdkms_linkblock"); ?>
+<?php
+$linkblock_content = $client->getFeatureString("bodystr", "non_existent_block");
+if (!isset($linkblock_content)) {
+    echo "my_html";
+} else {
+    echo $linkblock_content;
+}
+?>
 </div>
+<p> Direct Empty response
+<?php echo $client->getFeatureString("bodystr", "non_existent_block"); ?>
+</p>
 
 <?php echo $client->close() ?>
 </body>

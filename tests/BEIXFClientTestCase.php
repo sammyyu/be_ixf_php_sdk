@@ -45,6 +45,14 @@ final class BEIXFClientTestCase extends TestCase {
             "http://cnn.com/topnews",
             IXFSDKUtils::overrideHostInURL("http://www.abc.com/topnews", "cnn.com")
         );
+        $this->assertEquals(
+            "http://cnn.com/topnews",
+            IXFSDKUtils::overrideHostInURL("http://www.abc.com/topnews", "cnn.com:80")
+        );
+        $this->assertEquals(
+            "http://cnn.com:81/topnews",
+            IXFSDKUtils::overrideHostInURL("http://www.abc.com/topnews", "cnn.com:81")
+        );
     }
 
     public function testNormalizeURL() {
@@ -107,6 +115,24 @@ final class BEIXFClientTestCase extends TestCase {
         $this->assertEquals(
             "http://www.brightedge.com/test/index.jsp?k1=v1&k1=v2",
             IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k1=v2", $whitelistParameters)
+        );
+
+        // make sure we keep the encoding value
+        $whitelistParameters = array();
+        array_push($whitelistParameters, "k1");
+        $this->assertEquals(
+            "http://www.brightedge.com/test/index.jsp?k1=%25abcdef%3D",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=%25abcdef%3D&k2=v2", $whitelistParameters)
+        );
+
+        // check sorting in key
+        $whitelistParameters = array();
+        array_push($whitelistParameters, "ka");
+        array_push($whitelistParameters, "kb");
+        array_push($whitelistParameters, "kc");
+        $this->assertEquals(
+            "http://www.brightedge.com/test/index.jsp?ka=v2&kb=v1&kc=v3",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&kc=v3&ka=v2", $whitelistParameters)
         );
 
     }

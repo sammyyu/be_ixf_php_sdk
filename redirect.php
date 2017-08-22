@@ -11,7 +11,7 @@ $client = new BEIXFClient($be_ixf_config);
 <?php echo $client->getInitString() ?>
 </head>
 <body>
-<h2>Hello World!</h2>
+<h2>IXF Redirection Page (You shouldn't be seeing this)</h2>
 <?php
 // set time zone if it is not set
 if (get_cfg_var("date.timezone") == "0" || get_cfg_var("date.timezone") == "UTC") {
@@ -20,9 +20,9 @@ if (get_cfg_var("date.timezone") == "0" || get_cfg_var("date.timezone") == "UTC"
 ?>
 <p>Current time is <?php echo date("Y-m-d h:i:sa") ?></p>
 <div id="be_sdkms_linkblock">
-<?php echo $client->getFeatureString("linkblock", "be_sdkms_linkblock") ?>
+<?php echo $client->getFeatureString("bodystr", "be_sdkms_linkblock") ?>
 </div>
 
-<?php echo $client->close() ?>
+<?php echo $client->close(); ?>
 </body>
 </html>
