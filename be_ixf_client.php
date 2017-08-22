@@ -24,6 +24,9 @@ class BEIXFClient {
     public static $PAGE_INDEPENDENT_FOR_TEST_MODE_CONFIG = "page.independent";
     public static $CRAWLER_USER_AGENTS_CONFIG = "crawler.useragents";
 
+    public static $CANONICAL_HOST_CONFIG = "canonical.host";
+    public static $CANONICAL_PAGE_CONFIG = "canonical.page";
+
     public static $ENVIRONMENT_PRODUCTION = "production";
     public static $ENVIRONMENT_STAGING = "staging";
     public static $ENVIRONMENT_TESTING = "testing";
@@ -137,13 +140,33 @@ class BEIXFClient {
 
         $this->_original_url = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
         $this->_normalized_url = $this->_original_url;
-        $this->_normalized_url = IXFSDKUtils::normalizeURL($this->_normalized_url, null);
+        // #1 one construct the canonical URL
+        if (isset($this->config[self::$CANONICAL_PAGE_CONFIG])) {
+            $this->_normalized_url = $this->config[self::$CANONICAL_PAGE_CONFIG];
+        } else if (isset($this->config[self::$CANONICAL_HOST_CONFIG])) {
+            $this->_normalized_url = IXFSDKUtils::overrideHostInURL($this->_normalized_url, $this->config[self::$CANONICAL_HOST_CONFIG]);
+        }
+
+        // #2 normalize the URL
+        $whitelistParameters = explode("|", $this->config[self::$WHITELIST_PARAMETER_LIST_CONFIG]);
+        $this->_normalized_url = IXFSDKUtils::normalizeURL($this->_normalized_url, $whitelistParameters);
+
+        // #3 calculate the page hash
         $page_hash = IXFSDKUtils::getPageHash($this->_normalized_url);
 
         $this->_get_capsule_api_url = $urlBase . 'api/ixf/' . self::$API_VERSION . '/get_capsule/' . $this->config[self::$ACCOUNT_ID_CONFIG] .
             '/' . $page_hash;
         $startTime = round(microtime(true) * 1000);
         $ch = curl_init();
+
+        $connect_timeout = $this->config[self::$CONNECT_TIMEOUT_CONFIG];
+        $socket_timeout = $this->config[self::$SOCKET_TIMEOUT_CONFIG];
+        $user_agent = $_SERVER['HTTP_USER_AGENT'];
+        // raise timeout if it is crawler user agent
+        if (IXFSDKUtils::userAgentMatchesRegex($user_agent, $this->config[self::$CRAWLER_USER_AGENTS_CONFIG])) {
+            $connect_timeout = $this->config[self::$CRAWLER_CONNECT_TIMEOUT_CONFIG];
+            $socket_timeout = $this->config[self::$CRAWLER_SOCKET_TIMEOUT_CONFIG];
+        }
 
         // Set URL to download
         curl_setopt($ch, CURLOPT_URL, $this->_get_capsule_api_url);
@@ -155,9 +178,9 @@ class BEIXFClient {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         // connect timeout in milliseconds
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $this->config[self::$CONNECT_TIMEOUT_CONFIG]);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $connect_timeout);
         // overall timeout in seconds
-        curl_setopt($ch, CURLOPT_TIMEOUT_MS, $this->config[self::$SOCKET_TIMEOUT_CONFIG]);
+        curl_setopt($ch, CURLOPT_TIMEOUT_MS, $socket_timeout);
         // Enable decoding of the response
         curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
         // Enable following of redirects
@@ -221,7 +244,7 @@ class BEIXFClient {
             if ($this->debugMode) {
                 $sb .= "   <li id=\"be_sdkms_sdk_version\">" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
                 $sb .= "   <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
-                $sb .= "   <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "/li>\n";
+                $sb .= "   <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
                 $sb .= "   <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
                 $sb .= "   <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
                 $sb .= "   <li id=\"be_sdkms_capsule_response\">\n// <!--\n" . $this->_capsule_response . "\n-->\n</li>\n";
@@ -662,6 +685,23 @@ class IXFSDKUtils {
         return $arr;
     }
 
+    public static function overrideHostInURL($url, $canonicalHost) {
+        $url_parts = parse_url($url);
+        $url_parts['host'] = $canonicalHost;
+        $url = (isset($url_parts['scheme']) ? "{$url_parts['scheme']}:" : '') .
+            ((isset($url_parts['user']) || isset($url_parts['host'])) ? '//' : '') .
+            (isset($url_parts['user']) ? "{$url_parts['user']}" : '') .
+            (isset($url_parts['pass']) ? ":{$url_parts['pass']}" : '') .
+            (isset($url_parts['user']) ? '@' : '') .
+            (isset($url_parts['host']) ? "{$url_parts['host']}" : '') .
+            (isset($url_parts['port']) ? ":{$url_parts['port']}" : '') .
+            (isset($url_parts['path']) ? "{$url_parts['path']}" : '') .
+            (isset($url_parts['query']) ? "?{$url_parts['query']}" : '') .
+            (isset($url_parts['fragment']) ? "#{$url_parts['fragment']}" : '');
+        return $url;
+
+    }
+
     public static function normalizeURL($url, $whitelistParameters) {
         $url_parts = parse_url($url);
         $normalized_url = $url_parts['scheme'] . '://' . $url_parts['host'];
@@ -710,7 +750,13 @@ class IXFSDKUtils {
             }
         }
         return $normalized_url;
+    }
 
+    public static function userAgentMatchesRegex($user_agent, $user_agent_regex) {
+        if (preg_match("/" . $user_agent_regex . "/i", $user_agent)) {
+            return true;
+        }
+        return false;
     }
 
 }
