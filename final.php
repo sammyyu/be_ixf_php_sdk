@@ -1,7 +1,6 @@
 <?php
 require 'be_ixf_client.php';
 $be_ixf_config = array(
-    BEIXFClient::$API_ENDPOINT_CONFIG => 'https://api.brightedge.com',
 );
 $client = new BEIXFClient($be_ixf_config);
 ?>
@@ -11,7 +10,7 @@ $client = new BEIXFClient($be_ixf_config);
 <?php echo $client->getInitString() ?>
 </head>
 <body>
-<h2>Hello World!</h2>
+<h2>Hello World! Final Page</h2>
 <?php
 // set time zone if it is not set
 if (get_cfg_var("date.timezone") == "0" || get_cfg_var("date.timezone") == "UTC") {
