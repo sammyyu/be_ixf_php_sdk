@@ -134,7 +134,14 @@ class BEIXFClient {
         if (substr($urlBase, -1) != '/') {
             $urlBase .= "/";
         }
-        $this->_get_capsule_api_url = $urlBase . 'api/ixf/' . self::$API_VERSION . '/get_capsule/f00000000000123/1469034910';
+
+        $this->_original_url = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+        $this->_normalized_url = $this->_original_url;
+        $this->_normalized_url = IXFSDKUtils::normalizeURL($this->_normalized_url, null);
+        $page_hash = IXFSDKUtils::getPageHash($this->_normalized_url);
+
+        $this->_get_capsule_api_url = $urlBase . 'api/ixf/' . self::$API_VERSION . '/get_capsule/' . $this->config[self::$ACCOUNT_ID_CONFIG] .
+            '/' . $page_hash;
         $startTime = round(microtime(true) * 1000);
         $ch = curl_init();
 
@@ -213,8 +220,8 @@ class BEIXFClient {
             }
             if ($this->debugMode) {
                 $sb .= "   <li id=\"be_sdkms_sdk_version\">" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
-                // $sb .= "   <li id=\"be_sdkms_original_url\">%s</li>\n", this . _original_url));
-                // $sb .= "   <li id=\"be_sdkms_normalized_url\">%s</li>\n", this . _normalized_url));
+                $sb .= "   <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
+                $sb .= "   <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "/li>\n";
                 $sb .= "   <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
                 $sb .= "   <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
                 $sb .= "   <li id=\"be_sdkms_capsule_response\">\n// <!--\n" . $this->_capsule_response . "\n-->\n</li>\n";
@@ -280,14 +287,6 @@ class BEIXFClient {
         } finally {
             date_default_timezone_set($current_timezone);
         }
-
-        // Date normalizedDateObj = new Date(epochTimeInMillis);
-        // StringBuffer sb = new StringBuffer();
-        // Calendar calendar = GregorianCalendar.getInstance();
-        // calendar.setTimeZone(TimeZone.getTimeZone(self::$NORMALIZED_TIMEZONE));
-        // calendar.setTime(normalizedDateObj);
-        // sb.append(prefix + "_tstr:" + calendar.getTime() + "; " + prefix + "_epoch:" + normalizedDateObj.getTime());
-        // return sb;
     }
 
     public function getInitString() {
@@ -592,4 +591,126 @@ class Capsule {
     public function setDatePublished($datePublished) {
         $this->datePublished = $datePublished;
     }
+}
+
+class IXFSDKUtils {
+    public static function getSignedNumber($number) {
+        $bitLength = 32;
+        $mask = pow(2, $bitLength) - 1;
+        $testMask = 1 << ($bitLength - 1);
+        if (($number & $testMask) != 0) {
+            return $number | ~$mask;
+        } else {
+            return $number & $mask;
+        }
+    }
+
+    /**
+     * Convert url to a hash number, this func is to match JS version for IX link block
+     */
+    public static function getPageHash($url) {
+        $hash = 0;
+
+        $strlen = strlen($url);
+
+        for ($i = 0; $i < $strlen; $i++) {
+            $char = substr($url, $i, 1);
+            $characterOrd = ord($char);
+            $temp1 = self::getSignedNumber($hash << 5);
+            $temp2 = self::getSignedNumber($temp1 - $hash);
+            $hash = self::getSignedNumber($temp2 + $characterOrd);
+            $hash = self::getSignedNumber($hash & $hash);
+//            echo "Round 1 char=" . $characterOrd . ", temp1=" . $temp1 . ", temp2=" . $temp2 . ", hash=" . $hash . "\n";
+        }
+
+        // if hash is a negative number, remove '-' and append '0' in front
+        if ($hash < 0) {
+            return "0" . -$hash;
+        } else {
+            return $hash;
+        }
+    }
+
+    private static function proper_parse_str($str) {
+        # result array
+        $arr = array();
+
+        # split on outer delimiter
+        $pairs = explode('&', $str);
+
+        # loop through each pair
+        foreach ($pairs as $i) {
+            # split into name and value
+            list($name, $value) = explode('=', $i, 2);
+
+            # if name already exists
+            if (isset($arr[$name])) {
+                # stick multiple values into an array
+                if (is_array($arr[$name])) {
+                    $arr[$name][] = $value;
+                } else {
+                    $arr[$name] = array($arr[$name], $value);
+                }
+            }
+            # otherwise, simply stick it in a scalar
+            else {
+                $arr[$name] = $value;
+            }
+        }
+
+        # return result array
+        return $arr;
+    }
+
+    public static function normalizeURL($url, $whitelistParameters) {
+        $url_parts = parse_url($url);
+        $normalized_url = $url_parts['scheme'] . '://' . $url_parts['host'];
+        if (isset($url_parts['port'])) {
+            if (!(($url_parts['scheme'] == 'http' && $url_parts['port'] == 80) ||
+                ($url_parts['scheme'] == 'https' && $url_parts['port'] == 443))) {
+                $normalized_url .= ':' . $url_parts['port'];
+            }
+        }
+//        print_r($url_parts);
+        $normalized_url .= $url_parts['path'];
+        if ($whitelistParameters != null && count($whitelistParameters) > 0 && isset($url_parts['query'])) {
+            $query_string_keep = array();
+            $qs_array = self::proper_parse_str($url_parts['query']);
+            foreach ($qs_array as $key => $value) {
+//                echo "Checking $key found=" . in_array($key, $whitelistParameters) . "\n";
+                if (in_array($key, $whitelistParameters)) {
+                    $query_string_keep[$key] = $value;
+                }
+            }
+//            print_r($query_string_keep);
+            if (count($query_string_keep) > 0) {
+                $normalized_url .= "?";
+                $first = true;
+                foreach ($query_string_keep as $key => $value) {
+                    if (is_array($value)) {
+                        foreach ($value as $value_scalar) {
+                            if (!$first) {
+                                $normalized_url .= "&";
+                            }
+                            $normalized_url .= $key . "=" . $value_scalar;
+                            if ($first) {
+                                $first = false;
+                            }
+                        }
+                    } else {
+                        if (!$first) {
+                            $normalized_url .= "&";
+                        }
+                        $normalized_url .= $key . "=" . $value;
+                    }
+                    if ($first) {
+                        $first = false;
+                    }
+                }
+            }
+        }
+        return $normalized_url;
+
+    }
+
 }
