@@ -135,6 +135,21 @@ final class BEIXFClientTestCase extends TestCase {
             IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&kc=v3&ka=v2", $whitelistParameters)
         );
 
+        // check sorting in key with single key multiple values
+        // seems like comparator keeps position
+        $whitelistParameters = array();
+        array_push($whitelistParameters, "ka");
+        array_push($whitelistParameters, "kb");
+        array_push($whitelistParameters, "kc");
+        $this->assertEquals(
+            "http://www.brightedge.com/test/index.jsp?ka=v2.0&ka=v2.1&kb=v1&kc=v3",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&ka=v2.0&kc=v3&ka=v2.1", $whitelistParameters)
+        );
+        $this->assertEquals(
+            "http://www.brightedge.com/test/index.jsp?ka=v2.1&ka=v2.0&kb=v1&kc=v3",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&ka=v2.1&kc=v3&ka=v2.0", $whitelistParameters)
+        );
+
     }
 
     public function testUserAgentMatchesRegex() {

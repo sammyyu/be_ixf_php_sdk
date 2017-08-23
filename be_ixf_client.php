@@ -2,6 +2,7 @@
 /**
  * BE IXF Client class
  *
+ * minimum of PHP 5.5 is required due to try..finally..
  * mod_curl must be enabled
  *
  */
@@ -793,7 +794,10 @@ class IXFSDKUtils {
                     $query_string_keep[$key] = $value;
                 }
             }
+            // sort the query_string_keep by array key
+            ksort($query_string_keep);
 //            print_r($query_string_keep);
+
             if (count($query_string_keep) > 0) {
                 $normalized_url .= "?";
                 $first = true;
