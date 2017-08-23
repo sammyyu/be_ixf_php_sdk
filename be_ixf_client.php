@@ -21,7 +21,7 @@ class BEIXFClient {
     public static $PROXY_PASSWORD_CONFIG = "sdk.proxyPassword";
     public static $WHITELIST_PARAMETER_LIST_CONFIG = "whitelist.parameter.list";
     public static $FLAT_FILE_FOR_TEST_MODE_CONFIG = "flat.file";
-    public static $PAGE_INDEPENDENT_FOR_TEST_MODE_CONFIG = "page.independent";
+    public static $PAGE_INDEPENDENT_MODE_CONFIG = "page.independent";
     public static $CRAWLER_USER_AGENTS_CONFIG = "crawler.useragents";
 
     public static $CANONICAL_HOST_CONFIG = "canonical.host";
@@ -75,6 +75,11 @@ class BEIXFClient {
      * debugging
      */
     protected $errorMessages = array();
+
+    /**
+     * an array of array [entry point, time]
+     */
+    protected $profileHistory = array();
 
     /**
      * Instaniate IXF Client using a parameter array
@@ -169,6 +174,9 @@ class BEIXFClient {
             'orig_url' => $this->_original_url,
             'user_agent' => $user_agent,
         );
+        if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
+            $request_params['page_independent'] = 'true';
+        }
         $this->_get_capsule_api_url = $urlBase . 'api/ixf/' . self::$API_VERSION . '/get_capsule/' . $this->config[self::$ACCOUNT_ID_CONFIG] .
         '/' . $page_hash . '?' . http_build_query($request_params);
         $startTime = round(microtime(true) * 1000);
@@ -221,18 +229,29 @@ class BEIXFClient {
 
         // see if we got a status code of something other than 200
         if ($request['info']['http_code'] != 200) {
-            array_push($this->errorMessages,
-                'API request invalid HTTP status=' . $request['info']['http_code'] .
-                ", capsule_url=" . $this->_get_capsule_api_url);
+            if ($request['info']['http_code'] == 400) {
+                array_push($this->errorMessages,
+                    'API get capsule error, http_status=' . $request['info']['http_code'] .
+                    " likely capsule is missing, payload=" . $request['response'] .
+                    ", capsule_url=" . $this->_get_capsule_api_url);
+                $this->capsule = null;
+                // make it easier to read out in debug
+                $this->_capsule_response = $request['response'];
+
+            } else {
+                array_push($this->errorMessages,
+                    'API request invalid HTTP status=' . $request['info']['http_code'] .
+                    ", capsule_url=" . $this->_get_capsule_api_url);
+            }
+
         } else {
             // successful request parse out capsule
             $this->_capsule_response = $request['response'];
             $this->capsule = deserializeCapsuleJson($this->_capsule_response);
         }
 
-        // if we are here we got a response so let's return it
-        $this->response_time = round($request['info']['total_time'] * 1000);
         $this->connectTime = round(microtime(true) * 1000) - $startTime;
+        $this->addtoProfileHistory("constructor", $this->connectTime);
     }
 
     protected function generateEndingTags($blockType, $node_type, $publishingEngine,
@@ -248,12 +267,19 @@ class BEIXFClient {
                 $sb .= "    </ul>\n";
             }
             if ($this->debugMode) {
-                $sb .= "   <li id=\"be_sdkms_sdk_version\">" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
-                $sb .= "   <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
-                $sb .= "   <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
-                $sb .= "   <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
-                $sb .= "   <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
-                $sb .= "   <li id=\"be_sdkms_capsule_response\">\n// <!--\n" . $this->_capsule_response . "\n-->\n</li>\n";
+                $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
+                $sb .= "    <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
+                $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
+                $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
+                $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
+                $sb .= "    <li id=\"be_sdkms_capsule_response\">\n// <!--\n" . $this->_capsule_response . "\n-->\n</li>\n";
+                $sb .= "    <li id=\"be_sdkms_capsule_profile\">\n";
+                foreach ($this->profileHistory as $itemArray) {
+                    $itemName = $itemArray[0];
+                    $itemTime = $itemArray[1];
+                    $sb .= "       <li id=\"" . $itemName . "\" time=\"" . $itemTime . "\" />\n";
+                }
+                $sb .= "    </li>\n";
             }
 
             $sb .= "</ul>\n";
@@ -286,6 +312,10 @@ class BEIXFClient {
         }
 
         return $sb;
+    }
+
+    public function addtoProfileHistory($item, $elapsedTime) {
+        array_push($this->profileHistory, array($item, $elapsedTime));
     }
 
     /**
@@ -351,8 +381,17 @@ class BEIXFClient {
 
     }
 
+    public function hasFeatureString($node_type, $feature_type) {
+        return $this->getFeatureStringWrapper($node_type, $feature_type, true);
+    }
+
     public function getFeatureString($node_type, $feature_type) {
-        $sb = null;
+        return $this->getFeatureStringWrapper($node_type, $feature_type, false);
+    }
+
+    public function getFeatureStringWrapper($node_type, $feature_type, $checkOnly) {
+        $sb = "";
+        $hasContent = false;
         $startTime = round(microtime(true) * 1000);
         $publishingEngine = self::$DEFAULT_PUBLISHING_ENGINE;
         $engineVersion = self::$DEFAULT_ENGINE_VERSION;
@@ -367,16 +406,25 @@ class BEIXFClient {
                 $publishingEngine = $node->getPublishingEngine();
                 $engineVersion = $node->getPublishingEngine();
                 $metaString = $node->getMetaString();
+                $hasContent = true;
             } else {
                 array_push($this->errorMessages,
                     'Capsule missing ' . $node_type . ' node, feature_type ' . $feature_type);
             }
         }
 
-        if (isset($sb)) {
-            $elapsedTime = round(microtime(true) * 1000) - $startTime;
-            $sb .= $this->generateEndingTags(self::$OTHER_BLOCKTYPE, $node_type, $publishingEngine, $engineVersion, $metaString, $publishedTime, $elapsedTime);
+        $elapsedTime = round(microtime(true) * 1000) - $startTime;
+        $profileName = "getFeatureString";
+        if ($checkOnly) {
+            $profileName = "checkFeatureString";
         }
+        $this->addtoProfileHistory($profileName, $elapsedTime);
+
+        if ($checkOnly) {
+            return $hasContent;
+        }
+
+        $sb .= $this->generateEndingTags(self::$OTHER_BLOCKTYPE, $node_type, $publishingEngine, $engineVersion, $metaString, $publishedTime, $elapsedTime);
         return $sb;
     }
 

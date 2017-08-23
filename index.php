@@ -1,11 +1,21 @@
 <?php
 require 'be_ixf_client.php';
+
+$useGlobal = false;
+
 $be_ixf_config = array(
     BEIXFClient::$ACCOUNT_ID_CONFIG => 'f00000000000123',
     BEIXFClient::$ENVIRONMENT_CONFIG => BEIXFClient::$ENVIRONMENT_PRODUCTION,
 );
 
-$be_ixf_config = array_merge(array(
+if ($useGlobal) {
+    $be_ixf_config = array_merge($be_ixf_config, array(
+        BEIXFClient::$PAGE_INDEPENDENT_MODE_CONFIG => 'true',
+    ));
+
+}
+
+$be_ixf_config = array_merge($be_ixf_config, array(
     BEIXFClient::$PROXY_HOST_CONFIG => 'test1.bredg.com',
     BEIXFClient::$PROXY_PORT_CONFIG => '3333',
     BEIXFClient::$PROXY_LOGIN_CONFIG => 'syu',

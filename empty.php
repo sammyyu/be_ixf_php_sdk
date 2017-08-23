@@ -21,11 +21,10 @@ if (get_cfg_var("date.timezone") == "0" || get_cfg_var("date.timezone") == "UTC"
 <div id="be_sdkms_linkblock">
 
 <?php
-$linkblock_content = $client->getFeatureString("bodystr", "non_existent_block");
-if (!isset($linkblock_content)) {
+if (!$client->hasFeatureString("bodystr", "non_existent_block")) {
     echo "my_html";
 } else {
-    echo $linkblock_content;
+    echo $client->getFeatureString("bodystr", "non_existent_block");
 }
 ?>
 </div>
