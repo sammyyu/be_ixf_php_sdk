@@ -1,12 +1,29 @@
 <?php
 require 'be_ixf_client.php';
 
+$useStaging = false;
+$useStagingCapsule = true;
 $useGlobal = false;
 
 $be_ixf_config = array(
     BEIXFClient::$ACCOUNT_ID_CONFIG => 'f00000000000123',
     BEIXFClient::$ENVIRONMENT_CONFIG => BEIXFClient::$ENVIRONMENT_PRODUCTION,
 );
+
+if ($useStaging) {
+    $be_ixf_config = array_merge($be_ixf_config, array(
+        BEIXFClient::$ENVIRONMENT_CONFIG => BEIXFClient::$ENVIRONMENT_TESTING,
+    ));
+    if ($useStagingCapsule) {
+        $be_ixf_config = array_merge($be_ixf_config, array(
+            BEIXFClient::$FLAT_FILE_FOR_TEST_MODE_CONFIG => "false",
+        ));
+    } else {
+        $be_ixf_config = array_merge($be_ixf_config, array(
+            BEIXFClient::$FLAT_FILE_FOR_TEST_MODE_CONFIG => "true",
+        ));
+    }
+}
 
 if ($useGlobal) {
     $be_ixf_config = array_merge($be_ixf_config, array(

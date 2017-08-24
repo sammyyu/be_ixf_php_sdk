@@ -1,0 +1,29 @@
+{
+    "account_id": "f00000000000123",
+    "key": "http://mycompany.com/test/index.php?a=foo&b=bar",
+    "date_created": 1501608650554,
+    "date_published": 1501608670554,
+    "publishing_engine": "capsulemaker",
+    "engine_version": "1.0.0.0",
+    "capsule_version": "1.0.0",
+    "nodes": [
+        {
+            "type": "initstr",
+            "date_created": 1501608650554,
+            "date_published": 1501608670554,
+            "publishing_engine": "canoncleaner",
+            "engine_version": "1.0.0.0",
+            "meta_string": "consolidated_12",
+            "content": "<meta charset=\"utf-8\" /><meta name=\"description\" content=\"Example Meta description\" /><title>IX Foundation Sample Title</title>"
+        },
+        {
+            "type": "bodystr",
+            "feature_type": "be_sdkms_linkblock",
+            "date_created": 1501608650554,
+            "date_published": 1501608670554,
+            "publishing_engine": "linkmaker",
+            "engine_version": "1.0.0.0",
+            "content": "<p id=\"one\">This is from global test env capsule JSON capsule</p><p id=\"two\">This is an example link block</p>"
+        }
+    ]
+}

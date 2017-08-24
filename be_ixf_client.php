@@ -24,6 +24,7 @@ class BEIXFClient {
     public static $FLAT_FILE_FOR_TEST_MODE_CONFIG = "flat.file";
     public static $PAGE_INDEPENDENT_MODE_CONFIG = "page.independent";
     public static $CRAWLER_USER_AGENTS_CONFIG = "crawler.useragents";
+    public static $RESOURCE_DIRECTORY_CONFIG = "resource.dir";
 
     public static $CANONICAL_HOST_CONFIG = "canonical.host";
     public static $CANONICAL_PAGE_CONFIG = "canonical.page";
@@ -105,10 +106,14 @@ class BEIXFClient {
             self::$PROXY_PORT_CONFIG => self::$DEFAULT_PROXY_PORT,
             self::$PROXY_PROTOCOL_CONFIG => self::$DEFAULT_PROXY_PROTOCOL,
             self::$CRAWLER_USER_AGENTS_CONFIG => self::$DEFAULT_CRAWLER_USER_AGENTS,
+            self::$RESOURCE_DIRECTORY_CONFIG => __DIR__,
         );
 
+        // Merge passed in params with defaults for config.
+        $this->config = array_merge($this->config, $params);
+
         // read from properties file if it exists
-        $ini_file_location = join("/", array(__DIR__, "ixf.properties"));
+        $ini_file_location = join(DIRECTORY_SEPARATOR, array($this->config[self::$RESOURCE_DIRECTORY_CONFIG], "ixf.properties"));
         if (file_exists($ini_file_location)) {
             $ini_file = fopen($ini_file_location, "r");
             while (!feof($ini_file)) {
@@ -133,9 +138,6 @@ class BEIXFClient {
             $param_value = $_GET["ixf-debug"];
             $this->debugMode = $param_value === 'true' ? true : false;
         }
-
-        // Merge passed in params with defaults for config.
-        $this->config = array_merge($this->config, $params);
 
         // make URL request
         // http://127.0.0.1:8000/api/ixf/1.0/get_capsule/f00000000000123/asdasdsd/
@@ -181,76 +183,101 @@ class BEIXFClient {
         $this->_get_capsule_api_url = $urlBase . 'api/ixf/' . self::$API_VERSION . '/get_capsule/' . $this->config[self::$ACCOUNT_ID_CONFIG] .
         '/' . $page_hash . '?' . http_build_query($request_params);
         $startTime = round(microtime(true) * 1000);
-        $ch = curl_init();
 
-        // Set URL to download
-        curl_setopt($ch, CURLOPT_URL, $this->_get_capsule_api_url);
-        // Include header in result? (0 = yes, 1 = no)
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        // Should cURL return or print out the data? (true = return, false = print)
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        // disable SSL certificate check
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        // connect timeout in milliseconds
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $connect_timeout);
-        // overall timeout in seconds
-        curl_setopt($ch, CURLOPT_TIMEOUT_MS, $socket_timeout);
-        // Enable decoding of the response
-        curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
-        // Enable following of redirects
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        if ($this->isLocalContentMode()) {
+            if (!$this->useFlatFileForLocalFile()) {
+                if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
+                    $capsule_resource_file = join(DIRECTORY_SEPARATOR,
+                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                            "local_content", "global", "capsule.json"));
+                } else {
+                    $page_path_for_local_path = $this->convertPagePathToLocalPath($this->normalized_url);
+                    $capsule_resource_file = join(DIRECTORY_SEPARATOR,
+                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                            "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
+                            "capsule.json"));
 
-        if (isset($this->config[self::$PROXY_HOST_CONFIG])) {
-            curl_setopt($ch, CURLOPT_PROXY, $this->config[self::$PROXY_HOST_CONFIG]);
-            curl_setopt($ch, CURLOPT_PROXYPORT, $this->config[self::$PROXY_PORT_CONFIG]);
-            if (isset($this->config[self::$PROXY_LOGIN_CONFIG])) {
-                curl_setopt($ch, CURLOPT_PROXYUSERPWD, $this->config[self::$PROXY_LOGIN_CONFIG] . ":" . $this->config[self::$PROXY_PASSWORD_CONFIG]);
-            }
-        }
-
-        // make the request to the given URL and then store the response,
-        // request info, and error number
-        // so we can use them later
-        $request = array(
-            'response' => curl_exec($ch),
-            'info' => curl_getinfo($ch),
-            'error_number' => curl_errno($ch),
-            'error_message' => curl_error($ch),
-        );
-
-        // Close the cURL resource, and free system resources
-        curl_close($ch);
-
-        // see if we got any errors with the connection
-        if ($request['error_number'] != 0) {
-            array_push($this->errorMessages,
-                'API request error=' . $request['error_message'] . ", capsule_url=" . $this->_get_capsule_api_url);
-        }
-
-        // see if we got a status code of something other than 200
-        if ($request['info']['http_code'] != 200) {
-            if ($request['info']['http_code'] == 400) {
-                array_push($this->errorMessages,
-                    'API get capsule error, http_status=' . $request['info']['http_code'] .
-                    " likely capsule is missing, payload=" . $request['response'] .
-                    ", capsule_url=" . $this->_get_capsule_api_url);
-                $this->capsule = null;
-                // make it easier to read out in debug
-                $this->_capsule_response = $request['response'];
-
-            } else {
-                array_push($this->errorMessages,
-                    'API request invalid HTTP status=' . $request['info']['http_code'] .
-                    ", capsule_url=" . $this->_get_capsule_api_url);
+                }
+                if (!file_exists($capsule_resource_file)) {
+                    array_push($this->errorMessages,
+                        'capsule file=' . $capsule_resource_file . " doesn't exist.");
+                } else {
+                    $this->_capsule_response = file_get_contents($capsule_resource_file);
+                    $this->capsule = deserializeCapsuleJson($this->_capsule_response);
+                }
             }
 
         } else {
-            // successful request parse out capsule
-            $this->_capsule_response = $request['response'];
-            $this->capsule = deserializeCapsuleJson($this->_capsule_response);
-        }
+            $ch = curl_init();
 
+            // Set URL to download
+            curl_setopt($ch, CURLOPT_URL, $this->_get_capsule_api_url);
+            // Include header in result? (0 = yes, 1 = no)
+            curl_setopt($ch, CURLOPT_HEADER, 0);
+            // Should cURL return or print out the data? (true = return, false = print)
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            // disable SSL certificate check
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+            // connect timeout in milliseconds
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $connect_timeout);
+            // overall timeout in seconds
+            curl_setopt($ch, CURLOPT_TIMEOUT_MS, $socket_timeout);
+            // Enable decoding of the response
+            curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
+            // Enable following of redirects
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+            if (isset($this->config[self::$PROXY_HOST_CONFIG])) {
+                curl_setopt($ch, CURLOPT_PROXY, $this->config[self::$PROXY_HOST_CONFIG]);
+                curl_setopt($ch, CURLOPT_PROXYPORT, $this->config[self::$PROXY_PORT_CONFIG]);
+                if (isset($this->config[self::$PROXY_LOGIN_CONFIG])) {
+                    curl_setopt($ch, CURLOPT_PROXYUSERPWD, $this->config[self::$PROXY_LOGIN_CONFIG] . ":" . $this->config[self::$PROXY_PASSWORD_CONFIG]);
+                }
+            }
+
+            // make the request to the given URL and then store the response,
+            // request info, and error number
+            // so we can use them later
+            $request = array(
+                'response' => curl_exec($ch),
+                'info' => curl_getinfo($ch),
+                'error_number' => curl_errno($ch),
+                'error_message' => curl_error($ch),
+            );
+
+            // Close the cURL resource, and free system resources
+            curl_close($ch);
+
+            // see if we got any errors with the connection
+            if ($request['error_number'] != 0) {
+                array_push($this->errorMessages,
+                    'API request error=' . $request['error_message'] . ", capsule_url=" . $this->_get_capsule_api_url);
+            }
+
+            // see if we got a status code of something other than 200
+            if ($request['info']['http_code'] != 200) {
+                if ($request['info']['http_code'] == 400) {
+                    array_push($this->errorMessages,
+                        'API get capsule error, http_status=' . $request['info']['http_code'] .
+                        " likely capsule is missing, payload=" . $request['response'] .
+                        ", capsule_url=" . $this->_get_capsule_api_url);
+                    $this->capsule = null;
+                    // make it easier to read out in debug
+                    $this->_capsule_response = $request['response'];
+
+                } else {
+                    array_push($this->errorMessages,
+                        'API request invalid HTTP status=' . $request['info']['http_code'] .
+                        ", capsule_url=" . $this->_get_capsule_api_url);
+                }
+
+            } else {
+                // successful request parse out capsule
+                $this->_capsule_response = $request['response'];
+                $this->capsule = deserializeCapsuleJson($this->_capsule_response);
+            }
+        }
         $this->connectTime = round(microtime(true) * 1000) - $startTime;
         $this->addtoProfileHistory("constructor", $this->connectTime);
     }
@@ -315,8 +342,34 @@ class BEIXFClient {
         return $sb;
     }
 
+    public function isLocalContentMode() {
+        if ($this->config[self::$ENVIRONMENT_CONFIG] == self::$ENVIRONMENT_TESTING) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @return whether we should use flat file for test mode
+     */
+    public function useFlatFileForLocalFile() {
+        if ($this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] == "true") {
+            return true;
+        }
+        return false;
+    }
+
     public function addtoProfileHistory($item, $elapsedTime) {
         array_push($this->profileHistory, array($item, $elapsedTime));
+    }
+
+    public function convertPagePathToLocalPath($url) {
+        $page_path = parse_url($url)['path'];
+        // convert / to \ on Windows so we can load the file up
+        if (DIRECTORY_SEPARATOR == '\\') {
+            $page_path = str_replace('/', DIRECTORY_SEPARATOR, $page_path);
+        }
+        return $page_path;
     }
 
     /**
@@ -375,6 +428,29 @@ class BEIXFClient {
                 array_push($this->errorMessages,
                     'Capsule missing initstr node');
             }
+        } else if ($this->isLocalContentMode()) {
+            if ($this->useFlatFileForLocalFile()) {
+
+                if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
+                    $initstr_resource_file = join(DIRECTORY_SEPARATOR,
+                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                            "local_content", "global", "initstr.html"));
+                } else {
+                    $page_path_for_local_path = $this->convertPagePathToLocalPath($this->_normalized_url);
+                    $initstr_resource_file = join(DIRECTORY_SEPARATOR,
+                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                            "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
+                            "initstr.html"));
+
+                }
+                if (!file_exists($initstr_resource_file)) {
+                    array_push($this->errorMessages,
+                        'init str resource file=' . $initstr_resource_file . " doesn't exist.");
+                } else {
+                    $sb .= file_get_contents($initstr_resource_file);
+                }
+
+            }
         }
         $elapsedTime = round(microtime(true) * 1000) - $startTime;
         $sb .= $this->generateEndingTags(self::$INIT_BLOCKTYPE, "init_str", $publishingEngine, $engineVersion, $metaString, $publishedTime, $elapsedTime);
@@ -411,6 +487,28 @@ class BEIXFClient {
             } else {
                 array_push($this->errorMessages,
                     'Capsule missing ' . $node_type . ' node, feature_type ' . $feature_type);
+            }
+        } else if ($this->isLocalContentMode()) {
+            if ($this->useFlatFileForLocalFile()) {
+                if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
+                    $nodestr_resource_file = join(DIRECTORY_SEPARATOR,
+                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                            "local_content", "global", $node_type, $feature_type . ".html"));
+                } else {
+                    $page_path_for_local_path = $this->convertPagePathToLocalPath($this->_normalized_url);
+                    $nodestr_resource_file = join(DIRECTORY_SEPARATOR,
+                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                            "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
+                            $node_type, $feature_type . ".html"));
+
+                }
+                if (!file_exists($nodestr_resource_file)) {
+                    array_push($this->errorMessages,
+                        'node str resource file=' . $nodestr_resource_file . " doesn't exist.");
+                } else {
+                    $sb .= file_get_contents($nodestr_resource_file);
+                }
+
             }
         }
 
