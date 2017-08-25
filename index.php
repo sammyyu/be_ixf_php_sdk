@@ -1,35 +1,47 @@
 <?php
 require 'be_ixf_client.php';
 
-$useStaging = false;
-$useStagingCapsule = true;
+$useTesting = false;
 $useGlobal = false;
+$useTestingFlatFile = false;
 
 $be_ixf_config = array(
     BEIXFClient::$ACCOUNT_ID_CONFIG => 'f00000000000123',
     BEIXFClient::$ENVIRONMENT_CONFIG => BEIXFClient::$ENVIRONMENT_PRODUCTION,
 );
 
-if ($useStaging) {
-    $be_ixf_config = array_merge($be_ixf_config, array(
-        BEIXFClient::$ENVIRONMENT_CONFIG => BEIXFClient::$ENVIRONMENT_TESTING,
-    ));
-    if ($useStagingCapsule) {
+if (!$useTesting) {
+    if (!$useGlobal) {
         $be_ixf_config = array_merge($be_ixf_config, array(
-            BEIXFClient::$FLAT_FILE_FOR_TEST_MODE_CONFIG => "false",
+            BEIXFClient::$CAPSULE_MODE_CONFIG => BEIXFClient::$REMOTE_PROD_CAPSULE_MODE,
         ));
     } else {
         $be_ixf_config = array_merge($be_ixf_config, array(
-            BEIXFClient::$FLAT_FILE_FOR_TEST_MODE_CONFIG => "true",
+            BEIXFClient::$CAPSULE_MODE_CONFIG => BEIXFClient::$REMOTE_PROD_GLOBAL_CAPSULE_MODE,
         ));
     }
-}
-
-if ($useGlobal) {
-    $be_ixf_config = array_merge($be_ixf_config, array(
-        BEIXFClient::$PAGE_INDEPENDENT_MODE_CONFIG => 'true',
-    ));
-
+} else {
+    if (!$useGlobal) {
+        if (!$useTestingFlatFile) {
+            $be_ixf_config = array_merge($be_ixf_config, array(
+                BEIXFClient::$CAPSULE_MODE_CONFIG => BEIXFClient::$LOCAL_CAPSULE_MODE,
+            ));
+        } else {
+            $be_ixf_config = array_merge($be_ixf_config, array(
+                BEIXFClient::$CAPSULE_MODE_CONFIG => BEIXFClient::$LOCAL_FLAT_FILE_CAPSULE_MODE,
+            ));
+        }
+    } else {
+        if (!$useTestingFlatFile) {
+            $be_ixf_config = array_merge($be_ixf_config, array(
+                BEIXFClient::$CAPSULE_MODE_CONFIG => BEIXFClient::$LOCAL_GLOBAL_CAPSULE_MODE,
+            ));
+        } else {
+            $be_ixf_config = array_merge($be_ixf_config, array(
+                BEIXFClient::$CAPSULE_MODE_CONFIG => BEIXFClient::$LOCAL_GLOBAL_FLAT_FILE_CAPSULE_MODE,
+            ));
+        }
+    }
 }
 
 $be_ixf_config = array_merge($be_ixf_config, array(

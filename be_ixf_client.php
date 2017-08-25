@@ -25,9 +25,28 @@ class BEIXFClient {
     public static $PAGE_INDEPENDENT_MODE_CONFIG = "page.independent";
     public static $CRAWLER_USER_AGENTS_CONFIG = "crawler.useragents";
     public static $RESOURCE_DIRECTORY_CONFIG = "resource.dir";
+    // this is for short hand mode
+    public static $CAPSULE_MODE_CONFIG = "capsule.mode";
 
     public static $CANONICAL_HOST_CONFIG = "canonical.host";
     public static $CANONICAL_PAGE_CONFIG = "canonical.page";
+
+    // env = production, page_independent = false
+    public static $REMOTE_PROD_CAPSULE_MODE = "remote.prod.capsule";
+    // env = production, page_independent = true
+    public static $REMOTE_PROD_GLOBAL_CAPSULE_MODE = "remote.prod.global.capsule";
+    // env = staging, page_independent = false
+    public static $REMOTE_STAGING_CAPSULE_MODE = "remote.staging.capsule";
+    // env = staging, page_independent = true
+    public static $REMOTE_STAGING_GLOBAL_CAPSULE_MODE = "remote.staging.global.capsule";
+    // env = testing, page_independent = false, flat_file = false
+    public static $LOCAL_CAPSULE_MODE = "local.capsule";
+    // env = testing, page_independent = false, flat_file = true
+    public static $LOCAL_FLAT_FILE_CAPSULE_MODE = "local.flatfile.capsule";
+    // env = testing, page_independent = true, flat_file = false
+    public static $LOCAL_GLOBAL_CAPSULE_MODE = "local.global.capsule";
+    // env = testing, page_independent = true, flat_file = true
+    public static $LOCAL_GLOBAL_FLAT_FILE_CAPSULE_MODE = "local.global.flatfile.capsule";
 
     public static $ENVIRONMENT_PRODUCTION = "production";
     public static $ENVIRONMENT_STAGING = "staging";
@@ -109,9 +128,6 @@ class BEIXFClient {
             self::$RESOURCE_DIRECTORY_CONFIG => __DIR__,
         );
 
-        // Merge passed in params with defaults for config.
-        $this->config = array_merge($this->config, $params);
-
         // read from properties file if it exists
         $ini_file_location = join(DIRECTORY_SEPARATOR, array($this->config[self::$RESOURCE_DIRECTORY_CONFIG], "ixf.properties"));
         if (file_exists($ini_file_location)) {
@@ -127,6 +143,55 @@ class BEIXFClient {
                 }
             }
             fclose($ini_file);
+        }
+
+        // Merge passed in params with defaults for config.
+        $this->config = array_merge($this->config, $params);
+
+        if (isset($this->config[self::$CAPSULE_MODE_CONFIG])) {
+            $capsuleMode = $this->config[self::$CAPSULE_MODE_CONFIG];
+            if ($capsuleMode == self::$REMOTE_PROD_CAPSULE_MODE) {
+                // env = production, page_independent = false
+                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_PRODUCTION;
+                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "false";
+            } else if ($capsuleMode == self::$REMOTE_PROD_GLOBAL_CAPSULE_MODE) {
+                // env = production, page_independent = true
+                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_PRODUCTION;
+                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "true";
+            } else if ($capsuleMode == self::$REMOTE_STAGING_CAPSULE_MODE) {
+                // env = staging, page_independent = false
+                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_STAGING;
+                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "false";
+            } else if ($capsuleMode == self::$REMOTE_STAGING_GLOBAL_CAPSULE_MODE) {
+                // env = staging, page_independent = true
+                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_STAGING;
+                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "true";
+            } else if ($capsuleMode == self::$LOCAL_CAPSULE_MODE) {
+                // env = testing, page_independent = false, flat_file = false
+                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_TESTING;
+                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "false";
+                $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] = "false";
+            } else if ($capsuleMode == self::$LOCAL_FLAT_FILE_CAPSULE_MODE) {
+                // env = testing, page_independent = false, flat_file = true
+                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_TESTING;
+                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "false";
+                $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] = "true";
+            } else if ($capsuleMode == self::$LOCAL_FLAT_FILE_CAPSULE_MODE) {
+                // env = testing, page_independent = false, flat_file = true
+                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_TESTING;
+                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "false";
+                $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] = "true";
+            } else if ($capsuleMode == self::$LOCAL_GLOBAL_CAPSULE_MODE) {
+                // env = testing, page_independent = true, flat_file = false
+                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_TESTING;
+                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "true";
+                $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] = "false";
+            } else if ($capsuleMode == self::$LOCAL_GLOBAL_FLAT_FILE_CAPSULE_MODE) {
+                // env = testing, page_independent = true, flat_file = true
+                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_TESTING;
+                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "true";
+                $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] = "true";
+            }
         }
 
         if (!extension_loaded("curl")) {
@@ -177,10 +242,12 @@ class BEIXFClient {
             'orig_url' => $this->_original_url,
             'user_agent' => $user_agent,
         );
+
+        $get_capsule_api_call_name = "get_capsule";
         if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
-            $request_params['page_independent'] = 'true';
+            $get_capsule_api_call_name = "get_global_capsule";
         }
-        $this->_get_capsule_api_url = $urlBase . 'api/ixf/' . self::$API_VERSION . '/get_capsule/' . $this->config[self::$ACCOUNT_ID_CONFIG] .
+        $this->_get_capsule_api_url = $urlBase . 'api/ixf/' . self::$API_VERSION . '/' . $get_capsule_api_call_name . '/' . $this->config[self::$ACCOUNT_ID_CONFIG] .
         '/' . $page_hash . '?' . http_build_query($request_params);
         $startTime = round(microtime(true) * 1000);
 
@@ -458,15 +525,15 @@ class BEIXFClient {
 
     }
 
-    public function hasFeatureString($node_type, $feature_type) {
-        return $this->getFeatureStringWrapper($node_type, $feature_type, true);
+    public function hasFeatureString($node_type, $feature_group) {
+        return $this->getFeatureStringWrapper($node_type, $feature_group, true);
     }
 
-    public function getFeatureString($node_type, $feature_type) {
-        return $this->getFeatureStringWrapper($node_type, $feature_type, false);
+    public function getFeatureString($node_type, $feature_group) {
+        return $this->getFeatureStringWrapper($node_type, $feature_group, false);
     }
 
-    public function getFeatureStringWrapper($node_type, $feature_type, $checkOnly) {
+    public function getFeatureStringWrapper($node_type, $feature_group, $checkOnly) {
         $sb = "";
         $hasContent = false;
         $startTime = round(microtime(true) * 1000);
@@ -476,7 +543,7 @@ class BEIXFClient {
         $publishedTime = round(microtime(true) * 1000);
 
         if ($this->capsule) {
-            $node = $this->capsule->getBodyStringNode($feature_type);
+            $node = $this->capsule->getBodyStringNode($feature_group);
             if ($node) {
                 $sb = $node->getContent();
                 $publishedTime = $node->getDatePublished();
@@ -486,20 +553,20 @@ class BEIXFClient {
                 $hasContent = true;
             } else {
                 array_push($this->errorMessages,
-                    'Capsule missing ' . $node_type . ' node, feature_type ' . $feature_type);
+                    'Capsule missing ' . $node_type . ' node, feature_group ' . $feature_group);
             }
         } else if ($this->isLocalContentMode()) {
             if ($this->useFlatFileForLocalFile()) {
                 if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
                     $nodestr_resource_file = join(DIRECTORY_SEPARATOR,
                         array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
-                            "local_content", "global", $node_type, $feature_type . ".html"));
+                            "local_content", "global", $node_type, $feature_group . ".html"));
                 } else {
                     $page_path_for_local_path = $this->convertPagePathToLocalPath($this->_normalized_url);
                     $nodestr_resource_file = join(DIRECTORY_SEPARATOR,
                         array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
                             "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
-                            $node_type, $feature_type . ".html"));
+                            $node_type, $feature_group . ".html"));
 
                 }
                 if (!file_exists($nodestr_resource_file)) {
@@ -566,8 +633,8 @@ function deserializeCapsuleJson($capsule_json) {
             $node->setContent($node_obj->content);
         }
 
-        if (isset($node_obj->feature_type)) {
-            $node->setFeatureType($node_obj->feature_type);
+        if (isset($node_obj->feature_group)) {
+            $node->setFeatureType($node_obj->feature_group);
         }
 
         if (isset($node_obj->redirect_type)) {
@@ -593,7 +660,7 @@ class Node {
     protected $metaString;
     protected $content;
     // only applies to bodystr type
-    protected $feature_type;
+    protected $feature_group;
     // only applies to redirect type
     private $redirectType;
     private $redirectURL;
@@ -614,11 +681,11 @@ class Node {
     }
 
     public function getFeatureType() {
-        return $this->feature_type;
+        return $this->feature_group;
     }
 
-    public function setFeatureType($feature_type) {
-        $this->feature_type = $feature_type;
+    public function setFeatureType($feature_group) {
+        $this->feature_group = $feature_group;
     }
 
     public function getDateCreated() {
@@ -708,12 +775,12 @@ class Capsule {
         return null;
     }
 
-    public function getBodyStringNode($feature_type) {
+    public function getBodyStringNode($feature_group) {
         if ($this->capsuleNodeList == null) {
             return null;
         }
         foreach ($this->capsuleNodeList as $node) {
-            if ($node->getType() == Node::$BODYSTR_NODE_TYPE && $node->getFeatureType() == $feature_type) {
+            if ($node->getType() == Node::$BODYSTR_NODE_TYPE && $node->getFeatureType() == $feature_group) {
                 return $node;
             }
         }
