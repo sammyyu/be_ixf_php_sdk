@@ -448,7 +448,7 @@ class BEIXFClient {
         $current_timezone = date_default_timezone_get();
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
-            $sb .= strftime("${prefix}y_%Y; ${prefix}m_%M; ${prefix}d_%d; ${prefix}h_%H; ${prefix}mh_%M; ", $epochTimeInMillis / 1000);
+            $sb .= strftime("${prefix}y_%Y; ${prefix}m_%m; ${prefix}d_%d; ${prefix}h_%H; ${prefix}mh_%M; ", $epochTimeInMillis / 1000);
             $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
             return $sb;
         } finally {
