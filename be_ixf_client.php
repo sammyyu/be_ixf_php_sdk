@@ -76,7 +76,7 @@ class BEIXFClient {
 
     private static $API_VERSION = "1.0.0";
 
-    private static $DEFAULT_PUBLISHING_ENGINE = "built-in";
+    private static $DEFAULT_PUBLISHING_ENGINE = "bec-built-in";
     private static $DEFAULT_ENGINE_VERSION = "1.0.0";
     private static $DEFAULT_ENGINE_METASTRING = null;
 
@@ -352,6 +352,7 @@ class BEIXFClient {
     protected function generateEndingTags($blockType, $node_type, $publishingEngine,
         $engineVersion, $metaString, $publishedTimeEpochMilliseconds, $elapsedTime) {
         $sb = "";
+
         if ($blockType == self::$CLOSE_BLOCKTYPE) {
             $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
             if (count($this->errorMessages) > 0) {
@@ -386,8 +387,9 @@ class BEIXFClient {
                 $sb .= "    <li id=\"be_sdkms_capsule_index_time\">" . $this->convertToNormalizedGoogleIndexTimeZone(round(microtime(true) * 1000), "i") .
                     "</li>\n";
                 if ($this->capsule != null) {
-                    $sb .= "    <li id=\"be_sdkms_capsule_pub\">" . $this->capsule->getPublishingEngine() . "_" .
-                    $this->capsule->getVersion() . "</li>\n";
+                    $capsulePublisherLine = $this->capsule->getPublishingEngine() . "; ";
+                    $capsulePublisherLine .= $this->capsule->getPublishingEngine() . "_" . $this->capsule->getVersion();
+                    $sb .= "    <li id=\"be_sdkms_capsule_pub\">" . $capsulePublisherLine . "</li>\n";
                     $sb .= "    <li id=\"be_sdkms_capsule_date_modified\">" . $this->convertToNormalizedGoogleIndexTimeZone($this->capsule->getDatePublished(), "p") .
                         "</li>\n";
                 }
@@ -395,7 +397,8 @@ class BEIXFClient {
                 $sb .= "</ul>\n";
             }
             // node information
-            $publisherLine = $publishingEngine . "_" . $engineVersion . "; " . $node_type;
+            $publisherLine = $publishingEngine . "; ";
+            $publisherLine .= $publishingEngine . "_" . $engineVersion . "; " . $node_type;
             if ($metaString != null) {
                 $publisherLine .= "; " . $metaString;
             }
@@ -702,7 +705,7 @@ class Node {
         $this->datePublished = $datePublished;
     }
     public function getPublishingEngine() {
-        $this->publishingEngine;
+        return $this->publishingEngine;
     }
     public function setPublishingEngine($publishingEngine) {
         $this->publishingEngine = $publishingEngine;
