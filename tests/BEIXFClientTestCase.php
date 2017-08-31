@@ -192,7 +192,8 @@ final class BEIXFClientTestCase extends TestCase {
         $this->assertEquals("p_tstr:Thu Aug 31 10:11:54 PST 2017; p_epoch:1504199514000",
             IXFSDKUtils::convertToNormalizedTimeZone($epochTimeMillis, "p"));
 
-        // standard
+        // daylight savings 3/12/2017-11/5/2017
+        // not supported by PHP
         $epochTimeMillis = 1490980314000;
         $this->assertEquals("p_tstr:Fri Mar 31 10:11:54 PST 2017; p_epoch:1490980314000",
             IXFSDKUtils::convertToNormalizedTimeZone($epochTimeMillis, "p"));
@@ -206,7 +207,6 @@ final class BEIXFClientTestCase extends TestCase {
         $epochTimeMillis = 1488388194000;
         $this->assertEquals("p_tstr:Wed Mar 01 09:09:54 PST 2017; p_epoch:1488388194000",
             IXFSDKUtils::convertToNormalizedTimeZone($epochTimeMillis, "p"));
-
     }
 
     public function testConvertToNormalizedGoogleIndexTimeZone() {
@@ -215,7 +215,8 @@ final class BEIXFClientTestCase extends TestCase {
         $this->assertEquals("py_2017; pm_08; pd_31; ph_10; pmh_11; p_epoch:1504199514000",
             IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone($epochTimeMillis, "p"));
 
-        // standard
+        // daylight savings 3/12/2017-11/5/2017
+        // not supported by PHP
         $epochTimeMillis = 1490980314000;
         $this->assertEquals("py_2017; pm_03; pd_31; ph_10; pmh_11; p_epoch:1490980314000",
             IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone($epochTimeMillis, "p"));
