@@ -1,0 +1,83 @@
+{
+    "account_id": "global",
+    "key": "http://mycompany.com/test/index.jsp?a=foo&b=bar",
+    "date_created": 1504117307000,
+    "date_published": 1504117349000,
+    "publishing_engine": "SDK_internal",
+    "engine_version": "1.0.0.1",
+    "capsule_version": "1.0.0.3",
+    "nodes": [
+        {
+            "type": "initstr",
+            "date_created": 1504117307000,
+            "date_published": 1504117349000,
+            "publishing_engine": "SDK_internal",
+            "engine_version": "1.0.0.1",
+            "meta_string": "consolidated_12",
+            "content": "<meta charset=\"utf-8\" /><meta name=\"description\" content=\"BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE, FROM JAR. Content for initstr. The page successfully retrieved content from the jar.  The jar does not attempt to connect with remote services in this mode.\" /><title>Test title for BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE, FROM_JAR</title>"
+        },
+        {
+            "type": "bodystr",
+            "feature_group": "be_sdkms_flexblock_1",
+            "date_created": 1504117307000,
+            "date_published": 1504117349000,
+            "publishing_engine": "SDK_internal",
+            "engine_version": "1.0.0.1",
+            "content": "<ul><li>BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE, FROM_JAR Content for feature_type: be_sdkms_flexblock_1. The page successfully retrieved content from the jar.  The jar does not attempt to connect with remote services in this mode.</li></ul>"
+        },
+        {
+            "type": "bodystr",
+            "feature_group": "be_sdkms_flexblock_2",
+            "date_created": 1504117307000,
+            "date_published": 1504117349000,
+            "publishing_engine": "SDK_internal",
+            "engine_version": "1.0.0.1",
+            "content": "<ul><li>BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE, FROM_JAR Content for feature_type: be_sdkms_flexblock_2. The page successfully retrieved content from the jar.  The jar does not attempt to connect with remote services in this mode.</li></ul>"
+        },
+        {
+            "type": "bodystr",
+            "feature_group": "be_sdkms_flexblock_3",
+            "date_created": 1504117307000,
+            "date_published": 1504117349000,
+            "publishing_engine": "SDK_internal",
+            "engine_version": "1.0.0.1",
+            "content": "<ul><li>BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE, FROM_JAR Content for feature_type: be_sdkms_flexblock_3. The page successfully retrieved content from the jar.  The jar does not attempt to connect with remote services in this mode.</li></ul>"
+        },
+        {
+            "type": "bodystr",
+            "feature_group": "be_sdkms_flexblock_4",
+            "date_created": 1504117307000,
+            "date_published": 1504117349000,
+            "publishing_engine": "SDK_internal",
+            "engine_version": "1.0.0.1",
+            "content": "<ul><li>BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE, FROM_JAR Content for feature_type: be_sdkms_flexblock_4. The page successfully retrieved content from the jar.  The jar does not attempt to connect with remote services in this mode.</li></ul>"
+        },
+        {
+            "type": "bodystr",
+            "feature_group": "be_sdkms_flexblock_5",
+            "date_created": 1504117307000,
+            "date_published": 1504117349000,
+            "publishing_engine": "SDK_internal",
+            "engine_version": "1.0.0.1",
+            "content": "<ul><li>BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE, FROM_JAR Content for feature_type: be_sdkms_flexblock_5. The page successfully retrieved content from the jar.  The jar does not attempt to connect with remote services in this mode.</li></ul>"
+        },
+        {
+            "type": "bodystr",
+            "feature_group": "be_sdkms_flexblock_6",
+            "date_created": 1504117307000,
+            "date_published": 1504117349000,
+            "publishing_engine": "SDK_internal",
+            "engine_version": "1.0.0.1",
+            "content": "<ul><li>BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE, FROM_JAR Content for feature_type: be_sdkms_flexblock_6. The page successfully retrieved content from the jar.  The jar does not attempt to connect with remote services in this mode.</li></ul>"
+        },
+        {
+            "type": "bodystr",
+            "feature_group": "be_sdkms_flexblock_7",
+            "date_created": 1504117307000,
+            "date_published": 1504117349000,
+            "publishing_engine": "SDK_internal",
+            "engine_version": "1.0.0.1",
+            "content": "<ul><li>BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE, FROM_JAR Content for feature_type: be_sdkms_flexblock_7. The page successfully retrieved content from the jar.  The jar does not attempt to connect with remote services in this mode.</li></ul>"
+        }
+    ]
+}

@@ -28,7 +28,7 @@ if (get_cfg_var("date.timezone") == "0" || get_cfg_var("date.timezone") == "UTC"
 ?>
 <p>Current time is <?php echo date("Y-m-d h:i:sa") ?></p>
 <div id="be_sdkms_linkblock">
-<?php echo $client->getFeatureString("bodystr", "be_sdkms_linkblock") ?>
+<?php echo $client->getFeatureString("bodystr", "be_sdkms_flexblock_1") ?>
 </div>
 
 <?php echo $client->close() ?>

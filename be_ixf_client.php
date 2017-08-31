@@ -24,9 +24,10 @@ class BEIXFClient {
     public static $FLAT_FILE_FOR_TEST_MODE_CONFIG = "flat.file";
     public static $PAGE_INDEPENDENT_MODE_CONFIG = "page.independent";
     public static $CRAWLER_USER_AGENTS_CONFIG = "crawler.useragents";
-    public static $RESOURCE_DIRECTORY_CONFIG = "resource.dir";
     // this is for short hand mode
     public static $CAPSULE_MODE_CONFIG = "capsule.mode";
+    // directory where the resources are located
+    public static $CONTENT_BASE_PATH_CONFIG = "content.base.path";
 
     public static $CANONICAL_HOST_CONFIG = "canonical.host";
     public static $CANONICAL_PAGE_CONFIG = "canonical.page";
@@ -80,9 +81,6 @@ class BEIXFClient {
     private static $DEFAULT_ENGINE_VERSION = "1.0.0";
     private static $DEFAULT_ENGINE_METASTRING = null;
 
-    // time zone to emit all date in
-    private static $NORMALIZED_TIMEZONE = "US/Pacific";
-
     private $connectTime = 0;
 
     private $_get_capsule_api_url = null;
@@ -125,11 +123,11 @@ class BEIXFClient {
             self::$PROXY_PORT_CONFIG => self::$DEFAULT_PROXY_PORT,
             self::$PROXY_PROTOCOL_CONFIG => self::$DEFAULT_PROXY_PROTOCOL,
             self::$CRAWLER_USER_AGENTS_CONFIG => self::$DEFAULT_CRAWLER_USER_AGENTS,
-            self::$RESOURCE_DIRECTORY_CONFIG => __DIR__,
+            self::$CONTENT_BASE_PATH_CONFIG => __DIR__,
         );
 
         // read from properties file if it exists
-        $ini_file_location = join(DIRECTORY_SEPARATOR, array($this->config[self::$RESOURCE_DIRECTORY_CONFIG], "ixf.properties"));
+        $ini_file_location = join(DIRECTORY_SEPARATOR, array($this->config[self::$CONTENT_BASE_PATH_CONFIG], "ixf.properties"));
         if (file_exists($ini_file_location)) {
             $ini_file = fopen($ini_file_location, "r");
             while (!feof($ini_file)) {
@@ -255,12 +253,18 @@ class BEIXFClient {
             if (!$this->useFlatFileForLocalFile()) {
                 if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
                     $capsule_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
                             "local_content", "global", "capsule.json"));
+                    // if capsule doesn't exist load global one
+                    if (!file_exists($capsule_resource_file)) {
+                        $capsule_resource_file = join(DIRECTORY_SEPARATOR,
+                            array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
+                                "local_content", "global", "brightedge_capsule.json"));
+                    }
                 } else {
                     $page_path_for_local_path = $this->convertPagePathToLocalPath($this->normalized_url);
                     $capsule_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
                             "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
                             "capsule.json"));
 
@@ -384,13 +388,13 @@ class BEIXFClient {
             if ($blockType == self::$INIT_BLOCKTYPE) {
                 $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
                 $sb .= "    <li id=\"be_sdkms_capsule_connect_timer\">" . $this->connectTime . " ms</li>\n";
-                $sb .= "    <li id=\"be_sdkms_capsule_index_time\">" . $this->convertToNormalizedGoogleIndexTimeZone(round(microtime(true) * 1000), "i") .
+                $sb .= "    <li id=\"be_sdkms_capsule_index_time\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone(round(microtime(true) * 1000), "i") .
                     "</li>\n";
                 if ($this->capsule != null) {
                     $capsulePublisherLine = $this->capsule->getPublishingEngine() . "; ";
                     $capsulePublisherLine .= $this->capsule->getPublishingEngine() . "_" . $this->capsule->getVersion();
                     $sb .= "    <li id=\"be_sdkms_capsule_pub\">" . $capsulePublisherLine . "</li>\n";
-                    $sb .= "    <li id=\"be_sdkms_capsule_date_modified\">" . $this->convertToNormalizedGoogleIndexTimeZone($this->capsule->getDatePublished(), "p") .
+                    $sb .= "    <li id=\"be_sdkms_capsule_date_modified\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone($this->capsule->getDatePublished(), "p") .
                         "</li>\n";
                 }
 
@@ -404,7 +408,7 @@ class BEIXFClient {
             }
             $sb .= "<ul id=\"be_sdkms_node\" style=\"display:none!important\">\n";
             $sb .= "   <li id=\"be_sdkms_pub\">" . $publisherLine . "</li>\n";
-            $sb .= "   <li id=\"be_sdkms_date_modified\">" . $this->convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . "</li>\n";
+            $sb .= "   <li id=\"be_sdkms_date_modified\">" . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . "</li>\n";
             $sb .= "   <li id=\"be_sdkms_timer\">" . $elapsedTime . " ms</li>\n";
             $sb .= "</ul>\n";
         }
@@ -442,36 +446,6 @@ class BEIXFClient {
         return $page_path;
     }
 
-    /**
-     * Return date in this form: iy_2017; im_36; id_21; ih_11; imh_36; i_epoch:1503340561789
-     * This function is not thread safe (PHP doesn't support this today)
-     */
-    public function convertToNormalizedGoogleIndexTimeZone($epochTimeInMillis, $prefix) {
-        $sb = "";
-        $current_timezone = date_default_timezone_get();
-        try {
-            date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
-            $sb .= strftime("${prefix}y_%Y; ${prefix}m_%m; ${prefix}d_%d; ${prefix}h_%H; ${prefix}mh_%M; ", $epochTimeInMillis / 1000);
-            $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
-            return $sb;
-        } finally {
-            date_default_timezone_set($current_timezone);
-        }
-    }
-
-    public function convertToNormalizedTimeZone($epochTimeInMillis, $prefix) {
-        $sb = "";
-        $current_timezone = date_default_timezone_get();
-        try {
-            date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
-            $sb .= strftime("${prefix}_tstr: %a %b %d %H:%M:%S PST %Y; ", $epochTimeInMillis / 1000);
-            $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
-            return $sb;
-        } finally {
-            date_default_timezone_set($current_timezone);
-        }
-    }
-
     public function getInitString() {
         $sb = "";
         $startTime = round(microtime(true) * 1000);
@@ -500,15 +474,14 @@ class BEIXFClient {
             }
         } else if ($this->isLocalContentMode()) {
             if ($this->useFlatFileForLocalFile()) {
-
                 if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
                     $initstr_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
                             "local_content", "global", "initstr.html"));
                 } else {
                     $page_path_for_local_path = $this->convertPagePathToLocalPath($this->_normalized_url);
                     $initstr_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
                             "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
                             "initstr.html"));
 
@@ -562,12 +535,12 @@ class BEIXFClient {
             if ($this->useFlatFileForLocalFile()) {
                 if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
                     $nodestr_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
                             "local_content", "global", $node_type, $feature_group . ".html"));
                 } else {
                     $page_path_for_local_path = $this->convertPagePathToLocalPath($this->_normalized_url);
                     $nodestr_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$RESOURCE_DIRECTORY_CONFIG],
+                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
                             "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
                             $node_type, $feature_group . ".html"));
 
@@ -637,7 +610,7 @@ function deserializeCapsuleJson($capsule_json) {
         }
 
         if (isset($node_obj->feature_group)) {
-            $node->setFeatureType($node_obj->feature_group);
+            $node->setFeatureGroup($node_obj->feature_group);
         }
 
         if (isset($node_obj->redirect_type)) {
@@ -683,11 +656,11 @@ class Node {
         $this->type = $type;
     }
 
-    public function getFeatureType() {
+    public function getFeatureGroup() {
         return $this->feature_group;
     }
 
-    public function setFeatureType($feature_group) {
+    public function setFeatureGroup($feature_group) {
         $this->feature_group = $feature_group;
     }
 
@@ -783,7 +756,8 @@ class Capsule {
             return null;
         }
         foreach ($this->capsuleNodeList as $node) {
-            if ($node->getType() == Node::$BODYSTR_NODE_TYPE && $node->getFeatureType() == $feature_group) {
+//            echo "getting node type=" . $node->getType() . " fg= " . $node->getFeatureGroup() . "<br>\n";
+            if ($node->getType() == Node::$BODYSTR_NODE_TYPE && $node->getFeatureGroup() == $feature_group) {
                 return $node;
             }
         }
@@ -1000,6 +974,38 @@ class IXFSDKUtils {
             return true;
         }
         return false;
+    }
+
+    // time zone to emit all date in
+    private static $NORMALIZED_TIMEZONE = "US/Pacific";
+    /**
+     * Return date in this form: iy_2017; im_36; id_21; ih_11; imh_36; i_epoch:1503340561789
+     * This function is not thread safe (PHP doesn't support this today)
+     */
+    public static function convertToNormalizedGoogleIndexTimeZone($epochTimeInMillis, $prefix) {
+        $sb = "";
+        $current_timezone = date_default_timezone_get();
+        try {
+            date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
+            $sb .= strftime("${prefix}y_%Y; ${prefix}m_%m; ${prefix}d_%d; ${prefix}h_%H; ${prefix}mh_%M; ", $epochTimeInMillis / 1000);
+            $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
+            return $sb;
+        } finally {
+            date_default_timezone_set($current_timezone);
+        }
+    }
+
+    public static function convertToNormalizedTimeZone($epochTimeInMillis, $prefix) {
+        $sb = "";
+        $current_timezone = date_default_timezone_get();
+        try {
+            date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
+            $sb .= strftime("${prefix}_tstr: %a %b %d %H:%M:%S PST %Y; ", $epochTimeInMillis / 1000);
+            $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
+            return $sb;
+        } finally {
+            date_default_timezone_set($current_timezone);
+        }
     }
 
 }

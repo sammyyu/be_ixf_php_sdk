@@ -18,7 +18,7 @@
         },
         {
             "type": "bodystr",
-            "feature_type": "be_sdkms_linkblock",
+            "feature_group": "be_sdkms_flexblock_1",
             "date_created": 1501608650554,
             "date_published": 1501608670554,
             "publishing_engine": "linkmaker",
