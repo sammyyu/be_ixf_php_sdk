@@ -977,6 +977,7 @@ class IXFSDKUtils {
     }
 
     // time zone to emit all date in
+    // always set to PST
     private static $NORMALIZED_TIMEZONE = "US/Pacific";
     /**
      * Return date in this form: iy_2017; im_36; id_21; ih_11; imh_36; i_epoch:1503340561789
@@ -1000,7 +1001,7 @@ class IXFSDKUtils {
         $current_timezone = date_default_timezone_get();
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
-            $sb .= strftime("${prefix}_tstr: %a %b %d %H:%M:%S PST %Y; ", $epochTimeInMillis / 1000);
+            $sb .= strftime("${prefix}_tstr:%a %b %d %H:%M:%S PST %Y; ", $epochTimeInMillis / 1000);
             $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
             return $sb;
         } finally {
