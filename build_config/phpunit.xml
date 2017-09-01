@@ -4,4 +4,13 @@
         <directory>../tests</directory>
     </testsuite>
   </testsuites>
+  <filter>
+    <whitelist processUncoveredFilesFromWhitelist="true">
+      <file>../src/be_ixf_client.php</file>
+      <exclude>
+         <directory suffix=".php">/path/to/files</directory>
+         <file>/path/to/file</file>
+      </exclude>
+    </whitelist>
+  </filter>
 </phpunit>
