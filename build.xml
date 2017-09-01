@@ -259,7 +259,8 @@
    <arg path="${basedir}/build_config/phpunit.xml"/>
    <arg value="--log-junit"/>
    <arg path="${basedir}/build/unit/phpunit.xml"/>
-
+   <arg value="--coverage-xml"/>
+   <arg path="${basedir}/build/coverage/coverage.xml"/>
   </exec>
 
   <property name="phpunit.done" value="true"/>
@@ -272,6 +273,8 @@
   <exec executable="${phpunit}" failonerror="true" taskname="phpunit">
    <arg value="--configuration"/>
    <arg path="${basedir}/build_config/phpunit.xml"/>
+   <arg value="--log-junit"/>
+   <arg path="${basedir}/build/unit/phpunit.xml"/>
    <arg value="--no-coverage"/>
   </exec>
 
