@@ -83,13 +83,13 @@
  </target>
 
  <target name="set-unix-properties" unless="isWindows">
-   <property name="pdepend" value="${basedir}/build_config/tools/pdepend.cmd"/>
-   <property name="phpcpd"  value="${basedir}/build_config/tools/phpcpd.cmd"/>
-   <property name="phpcs"   value="${basedir}/build_config/tools/phpcs.cmd"/>
-   <property name="phpdox"  value="${basedir}/build_config/tools/phpdox.cmd"/>
-   <property name="phploc"  value="${basedir}/build_config/tools/phploc.cmd"/>
-   <property name="phpmd"   value="${basedir}/build_config/tools/phpmd.cmd"/>
-   <property name="phpunit" value="${basedir}/build_config/tools/phpunit.cmd"/>
+   <property name="pdepend" value="${basedir}/build_config/tools/pdepend.phar"/>
+   <property name="phpcpd"  value="${basedir}/build_config/tools/phpcpd.phar"/>
+   <property name="phpcs"   value="${basedir}/build_config/tools/phpcs.phar"/>
+   <property name="phpdox"  value="${basedir}/build_config/tools/phpdox.phar"/>
+   <property name="phploc"  value="${basedir}/build_config/tools/phploc.phar"/>
+   <property name="phpmd"   value="${basedir}/build_config/tools/phpmd.phar"/>
+   <property name="phpunit" value="${basedir}/build_config/tools/phpunit.phar"/>
  </target>
 
  <target name="prepare"
