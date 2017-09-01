@@ -1,0 +1,7 @@
+<phpunit bootstrap="../tests/bootstrap.php">
+  <testsuites>
+    <testsuite name="be_ixf_php_sdk">
+        <directory>../tests</directory>
+    </testsuite>
+  </testsuites>
+</phpunit>

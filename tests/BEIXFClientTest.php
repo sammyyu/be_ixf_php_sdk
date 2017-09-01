@@ -2,13 +2,13 @@
 use PHPUnit\Framework\TestCase;
 
 /**
-c:\wamp64\bin\php\php7.0.10\php.exe c:\php56\phpunit.phar --bootstrap be_ixf_client.php tests\BEIXFClientTestCase.php
+c:\wamp64\bin\php\php7.0.10\php.exe c:\php56\phpunit.phar --bootstrap be_ixf_client.php tests\BEIXFClientTest.php
  */
 
 /**
  * @covers BEIXFClient
  */
-final class BEIXFClientTestCase extends TestCase {
+final class BEIXFClientTest extends TestCase {
     public function testGetSignedNumber() {
         $this->assertEquals(
             5,
