@@ -260,7 +260,7 @@
    <arg value="--log-junit"/>
    <arg path="${basedir}/build/unit/phpunit.xml"/>
    <arg value="--coverage-xml"/>
-   <arg path="${basedir}/build/coverage/coverage.xml"/>
+   <arg path="${basedir}/build/coverage"/>
   </exec>
 
   <property name="phpunit.done" value="true"/>
