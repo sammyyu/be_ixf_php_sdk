@@ -259,8 +259,8 @@
    <arg path="${basedir}/build_config/phpunit.xml"/>
    <arg value="--log-junit"/>
    <arg path="${basedir}/build/unit/phpunit.xml"/>
-   <arg value="--coverage-xml"/>
-   <arg path="${basedir}/build/coverage"/>
+   <arg value="--coverage-clover"/>
+   <arg path="${basedir}/build/coverage/clover.xml"/>
   </exec>
 
   <property name="phpunit.done" value="true"/>
