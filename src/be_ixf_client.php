@@ -76,11 +76,6 @@ class BEIXFClient {
     public static $CLOSE_BLOCKTYPE = 1;
     public static $OTHER_BLOCKTYPE = 2;
 
-    public static $NODE_TYPE_HEADSTR = 'headstr';
-    public static $NODE_TYPE_BODYSTR = 'bodystr';
-    public static $FEATURE_GROUP_HEAD_OPEN = '_head_open';
-    public static $FEATURE_GROUP_BODY_OPEN = '_body_open';
-
     public static $CLIENT_NAME = "php_sdk";
     public static $CLIENT_VERSION = "1.2.0";
 
@@ -426,14 +421,12 @@ class BEIXFClient {
                     $sb .= "   be_sdkms_date_modified: " . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . ";\n";
                     $sb .= "   be_sdkms_timer: " . $elapsedTime . " ms;\n";
                     $sb .= "-->\n";
-                } elseif ($tagFormat === self::$TAG_BLOCK || $tagFormat == self::$TAG_BODY_OPEN) {
+                } else if ($tagFormat === self::$TAG_BLOCK || $tagFormat == self::$TAG_BODY_OPEN) {
                     $sb .= "<ul id=\"be_sdkms_node\" style=\"display:none!important\">\n";
                     $sb .= "   <li id=\"be_sdkms_pub\">" . $publisherLine . "</li>\n";
                     $sb .= "   <li id=\"be_sdkms_date_modified\">" . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . "</li>\n";
                     $sb .= "   <li id=\"be_sdkms_timer\">" . $elapsedTime . " ms</li>\n";
                     $sb .= "</ul>\n";
-                } else {
-
                 }
             }
 
@@ -482,7 +475,6 @@ class BEIXFClient {
                 header("Location: " . $redirectNode->getRedirectURL());
             }
         }
-
     }
 
     public function hasFeatureString($node_type, $feature_group) {
@@ -563,27 +555,27 @@ class BEIXFClient {
     }
 
     public function getHeadOpen() {
-        return $this->getFeatureString(self::$NODE_TYPE_HEADSTR, self::$FEATURE_GROUP_HEAD_OPEN, self::$TAG_NONE);
+        return $this->getFeatureString(Node::$NODE_TYPE_HEADSTR, Node::$FEATURE_GROUP_HEAD_OPEN, self::$TAG_NONE);
     }
 
     public function getBodyOpen() {
-        return $this->getFeatureString(self::$NODE_TYPE_BODYSTR, self::$FEATURE_GROUP_BODY_OPEN, self::$TAG_BODY_OPEN);
+        return $this->getFeatureString(Node::$NODE_TYPE_BODYSTR, Node::$FEATURE_GROUP_BODY_OPEN, self::$TAG_BODY_OPEN);
     }
 
     public function getHeadString($feature_group) {
-        return $this->getFeatureString(self::$NODE_TYPE_HEADSTR, $feature_group, self::$TAG_NONE);
+        return $this->getFeatureString(Node::$NODE_TYPE_HEADSTR, $feature_group, self::$TAG_NONE);
     }
 
     public function getBodyString($feature_group) {
-        return $this->getFeatureString(self::$NODE_TYPE_BODYSTR, $feature_group, self::$TAG_COMMENT);
+        return $this->getFeatureString(Node::$NODE_TYPE_BODYSTR, $feature_group, self::$TAG_COMMENT);
     }
 
     public function hasHeadString($feature_group) {
-        return $this->hasFeatureString(self::$NODE_TYPE_HEADSTR, $feature_group);
+        return $this->hasFeatureString(Node::$NODE_TYPE_HEADSTR, $feature_group);
     }
 
     public function hasBodyString($feature_group) {
-        return $this->hasFeatureString(self::$NODE_TYPE_BODYSTR, $feature_group);
+        return $this->hasFeatureString(Node::$NODE_TYPE_BODYSTR, $feature_group);
     }
 
 }
@@ -652,8 +644,12 @@ class Node {
     private $redirectType;
     private $redirectURL;
 
-    public static $INITSTR_NODE_TYPE = "initstr";
-    public static $REDIRECT_NODE_TYPE = "redirect";
+    public static $NODE_TYPE_INITSTR = "initstr";
+    public static $NODE_TYPE_REDIRECT = "redirect";
+    public static $NODE_TYPE_HEADSTR = 'headstr';
+    public static $NODE_TYPE_BODYSTR = 'bodystr';
+    public static $FEATURE_GROUP_HEAD_OPEN = '_head_open';
+    public static $FEATURE_GROUP_BODY_OPEN = '_body_open';
 
     public function __construct() {
     }
@@ -742,7 +738,7 @@ class Capsule {
             return null;
         }
         foreach ($this->capsuleNodeList as $node) {
-            if ($node->getType() == Node::$INITSTR_NODE_TYPE) {
+            if ($node->getType() == Node::$NODE_TYPE_INITSTR) {
                 return $node;
             }
         }
@@ -754,7 +750,7 @@ class Capsule {
             return null;
         }
         foreach ($this->capsuleNodeList as $node) {
-            if ($node->getType() == Node::$REDIRECT_NODE_TYPE) {
+            if ($node->getType() == Node::$NODE_TYPE_REDIRECT) {
                 return $node;
             }
         }
