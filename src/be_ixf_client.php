@@ -68,17 +68,26 @@ class BEIXFClient {
     // a list of crawler user agents case insensitive regex, so separate by |
     public static $DEFAULT_CRAWLER_USER_AGENTS = "google|bingbot|msnbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|ia_archiver";
 
-    public static $INIT_BLOCKTYPE = 0;
+    public static $TAG_NONE = 0;
+    public static $TAG_BODY_OPEN = 1;
+    public static $TAG_BLOCK = 2;
+    public static $TAG_COMMENT = 3;
+
     public static $CLOSE_BLOCKTYPE = 1;
     public static $OTHER_BLOCKTYPE = 2;
 
+    public static $NODE_TYPE_HEADSTR = 'headstr';
+    public static $NODE_TYPE_BODYSTR = 'bodystr';
+    public static $FEATURE_GROUP_HEAD_OPEN = '_head_open';
+    public static $FEATURE_GROUP_BODY_OPEN = '_body_open';
+
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.0.0";
+    public static $CLIENT_VERSION = "1.2.0";
 
     private static $API_VERSION = "1.0.0";
 
     private static $DEFAULT_PUBLISHING_ENGINE = "bec-built-in";
-    private static $DEFAULT_ENGINE_VERSION = "1.0.0";
+    private static $DEFAULT_ENGINE_VERSION = "1.0.1";
     private static $DEFAULT_ENGINE_METASTRING = null;
 
     private $connectTime = 0;
@@ -133,6 +142,9 @@ class BEIXFClient {
             while (!feof($ini_file)) {
                 $line = fgets($ini_file);
                 $line = trim($line);
+                if (strlen($line)==0 || $line[0]==';' || $line[0] == '#') {
+                    continue;
+                }
                 $parts = explode("=", $line, 2);
                 if (count($parts) == 2) {
                     $key = trim($parts[0]);
@@ -351,67 +363,79 @@ class BEIXFClient {
         }
         $this->connectTime = round(microtime(true) * 1000) - $startTime;
         $this->addtoProfileHistory("constructor", $this->connectTime);
+        // placed here so we can drop the redirection as early as possible
+        $this->checkAndRedirectNode();
     }
 
     protected function generateEndingTags($blockType, $node_type, $publishingEngine,
-        $engineVersion, $metaString, $publishedTimeEpochMilliseconds, $elapsedTime) {
+        $engineVersion, $metaString, $publishedTimeEpochMilliseconds, $elapsedTime, $tagFormat) {
         $sb = "";
 
-        if ($blockType == self::$CLOSE_BLOCKTYPE) {
-            $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
-            if (count($this->errorMessages) > 0) {
-                $sb .= "    <ul id=\"be_sdkms_capsule_errors\">\n";
-                foreach ($this->errorMessages as $error_msg) {
-                    $sb .= "        <li id=\"error_msg\">" . $error_msg . "</li>\n";
-                }
-                $sb .= "    </ul>\n";
-            }
-            if ($this->debugMode) {
-                $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
-                $sb .= "    <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
-                $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
-                $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
-                $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
-                $sb .= "    <li id=\"be_sdkms_capsule_response\">\n// <!--\n" . $this->_capsule_response . "\n-->\n</li>\n";
-                $sb .= "    <li id=\"be_sdkms_capsule_profile\">\n";
-                foreach ($this->profileHistory as $itemArray) {
-                    $itemName = $itemArray[0];
-                    $itemTime = $itemArray[1];
-                    $sb .= "       <li id=\"" . $itemName . "\" time=\"" . $itemTime . "\" />\n";
-                }
-                $sb .= "    </li>\n";
-            }
-
-            $sb .= "</ul>\n";
-        } else {
-            // capsule information only applies to init block
-            if ($blockType == self::$INIT_BLOCKTYPE) {
+            if ($blockType == self::$CLOSE_BLOCKTYPE) {
                 $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
-                $sb .= "    <li id=\"be_sdkms_capsule_connect_timer\">" . $this->connectTime . " ms</li>\n";
-                $sb .= "    <li id=\"be_sdkms_capsule_index_time\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone(round(microtime(true) * 1000), "i") .
-                    "</li>\n";
-                if ($this->capsule != null) {
-                    $capsulePublisherLine = $this->capsule->getPublishingEngine() . "; ";
-                    $capsulePublisherLine .= $this->capsule->getPublishingEngine() . "_" . $this->capsule->getVersion();
-                    $sb .= "    <li id=\"be_sdkms_capsule_pub\">" . $capsulePublisherLine . "</li>\n";
-                    $sb .= "    <li id=\"be_sdkms_capsule_date_modified\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone($this->capsule->getDatePublished(), "p") .
-                        "</li>\n";
+                if (count($this->errorMessages) > 0) {
+                    $sb .= "    <ul id=\"be_sdkms_capsule_errors\">\n";
+                    foreach ($this->errorMessages as $error_msg) {
+                        $sb .= "        <li id=\"error_msg\">" . $error_msg . "</li>\n";
+                    }
+                    $sb .= "    </ul>\n";
+                }
+                if ($this->debugMode) {
+                    $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
+                    $sb .= "    <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
+                    $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
+                    $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
+                    $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
+                    $sb .= "    <li id=\"be_sdkms_capsule_response\">\n// <!--\n" . $this->_capsule_response . "\n-->\n</li>\n";
+                    $sb .= "    <li id=\"be_sdkms_capsule_profile\">\n";
+                    foreach ($this->profileHistory as $itemArray) {
+                        $itemName = $itemArray[0];
+                        $itemTime = $itemArray[1];
+                        $sb .= "       <li id=\"" . $itemName . "\" time=\"" . $itemTime . "\" />\n";
+                    }
+                    $sb .= "    </li>\n";
                 }
 
                 $sb .= "</ul>\n";
+            } else {
+                // capsule information only applies to init block
+                if ($tagFormat == self::$TAG_BODY_OPEN) {
+                    $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
+                    $sb .= "    <li id=\"be_sdkms_capsule_connect_timer\">" . $this->connectTime . " ms</li>\n";
+                    $sb .= "    <li id=\"be_sdkms_capsule_index_time\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone(round(microtime(true) * 1000), "i") .
+                        "</li>\n";
+                    if ($this->capsule != null) {
+                        $capsulePublisherLine = $this->capsule->getPublishingEngine() . "; ";
+                        $capsulePublisherLine .= $this->capsule->getPublishingEngine() . "_" . $this->capsule->getVersion();
+                        $sb .= "    <li id=\"be_sdkms_capsule_pub\">" . $capsulePublisherLine . "</li>\n";
+                        $sb .= "    <li id=\"be_sdkms_capsule_date_modified\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone($this->capsule->getDatePublished(), "p") .
+                            "</li>\n";
+                    }
+
+                    $sb .= "</ul>\n";
+                }
+                // node information
+                $publisherLine = $publishingEngine . "; ";
+                $publisherLine .= $publishingEngine . "_" . $engineVersion . "; " . $node_type;
+                if ($metaString != null) {
+                    $publisherLine .= "; " . $metaString;
+                }
+                if ($tagFormat === self::$TAG_COMMENT) {
+                    $sb .= "<!--\n";
+                    $sb .= "   be_sdkms_pub: " . $publisherLine . ";\n";
+                    $sb .= "   be_sdkms_date_modified: " . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . ";\n";
+                    $sb .= "   be_sdkms_timer: " . $elapsedTime . " ms;\n";
+                    $sb .= "-->\n";
+                } elseif ($tagFormat === self::$TAG_BLOCK || $tagFormat == self::$TAG_BODY_OPEN) {
+                    $sb .= "<ul id=\"be_sdkms_node\" style=\"display:none!important\">\n";
+                    $sb .= "   <li id=\"be_sdkms_pub\">" . $publisherLine . "</li>\n";
+                    $sb .= "   <li id=\"be_sdkms_date_modified\">" . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . "</li>\n";
+                    $sb .= "   <li id=\"be_sdkms_timer\">" . $elapsedTime . " ms</li>\n";
+                    $sb .= "</ul>\n";
+                } else {
+
+                }
             }
-            // node information
-            $publisherLine = $publishingEngine . "; ";
-            $publisherLine .= $publishingEngine . "_" . $engineVersion . "; " . $node_type;
-            if ($metaString != null) {
-                $publisherLine .= "; " . $metaString;
-            }
-            $sb .= "<ul id=\"be_sdkms_node\" style=\"display:none!important\">\n";
-            $sb .= "   <li id=\"be_sdkms_pub\">" . $publisherLine . "</li>\n";
-            $sb .= "   <li id=\"be_sdkms_date_modified\">" . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . "</li>\n";
-            $sb .= "   <li id=\"be_sdkms_timer\">" . $elapsedTime . " ms</li>\n";
-            $sb .= "</ul>\n";
-        }
 
         return $sb;
     }
@@ -446,70 +470,30 @@ class BEIXFClient {
         return $page_path;
     }
 
-    public function getInitString() {
-        $sb = "";
-        $startTime = round(microtime(true) * 1000);
-        $publishingEngine = self::$DEFAULT_PUBLISHING_ENGINE;
-        $engineVersion = self::$DEFAULT_ENGINE_VERSION;
-        $metaString = self::$DEFAULT_ENGINE_METASTRING;
-        $publishedTime = round(microtime(true) * 1000);
-
+    /**
+     * Check for the existence of a redirect node
+     * if it is there redirect
+     */
+    public function checkAndRedirectNode() {
         if ($this->capsule) {
             $redirectNode = $this->capsule->getRedirectNode();
             if ($redirectNode != null) {
                 http_response_code($redirectNode->getRedirectType());
                 header("Location: " . $redirectNode->getRedirectURL());
             }
-
-            $initStringNode = $this->capsule->getInitStringNode();
-            if ($initStringNode) {
-                $sb .= $initStringNode->getContent();
-                $publishedTime = $initStringNode->getDatePublished();
-                $publishingEngine = $initStringNode->getPublishingEngine();
-                $engineVersion = $initStringNode->getPublishingEngine();
-                $metaString = $initStringNode->getMetaString();
-            } else {
-                array_push($this->errorMessages,
-                    'Capsule missing initstr node');
-            }
-        } else if ($this->isLocalContentMode()) {
-            if ($this->useFlatFileForLocalFile()) {
-                if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
-                    $initstr_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
-                            "local_content", "global", "initstr.html"));
-                } else {
-                    $page_path_for_local_path = $this->convertPagePathToLocalPath($this->_normalized_url);
-                    $initstr_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
-                            "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
-                            "initstr.html"));
-
-                }
-                if (!file_exists($initstr_resource_file)) {
-                    array_push($this->errorMessages,
-                        'init str resource file=' . $initstr_resource_file . " doesn't exist.");
-                } else {
-                    $sb .= file_get_contents($initstr_resource_file);
-                }
-
-            }
         }
-        $elapsedTime = round(microtime(true) * 1000) - $startTime;
-        $sb .= $this->generateEndingTags(self::$INIT_BLOCKTYPE, "init_str", $publishingEngine, $engineVersion, $metaString, $publishedTime, $elapsedTime);
-        return $sb;
 
     }
 
     public function hasFeatureString($node_type, $feature_group) {
-        return $this->getFeatureStringWrapper($node_type, $feature_group, true);
+        return $this->getFeatureStringWrapper($node_type, $feature_group, true, self::$TAG_NONE);
     }
 
-    public function getFeatureString($node_type, $feature_group) {
-        return $this->getFeatureStringWrapper($node_type, $feature_group, false);
+    public function getFeatureString($node_type, $feature_group, $tagFormat) {
+        return $this->getFeatureStringWrapper($node_type, $feature_group, false, $tagFormat);
     }
 
-    public function getFeatureStringWrapper($node_type, $feature_group, $checkOnly) {
+    public function getFeatureStringWrapper($node_type, $feature_group, $checkOnly, $tagFormat) {
         $sb = "";
         $hasContent = false;
         $startTime = round(microtime(true) * 1000);
@@ -519,7 +503,7 @@ class BEIXFClient {
         $publishedTime = round(microtime(true) * 1000);
 
         if ($this->capsule) {
-            $node = $this->capsule->getBodyStringNode($feature_group);
+            $node = $this->capsule->getNode($node_type, $feature_group);
             if ($node) {
                 $sb = $node->getContent();
                 $publishedTime = $node->getDatePublished();
@@ -565,16 +549,43 @@ class BEIXFClient {
         if ($checkOnly) {
             return $hasContent;
         }
-
-        $sb .= $this->generateEndingTags(self::$OTHER_BLOCKTYPE, $node_type, $publishingEngine, $engineVersion, $metaString, $publishedTime, $elapsedTime);
+        if ($tagFormat !== self::$TAG_NONE) {
+            $sb .= $this->generateEndingTags(self::$OTHER_BLOCKTYPE, $node_type, $publishingEngine, $engineVersion, $metaString, $publishedTime,
+                                             $elapsedTime, $tagFormat);
+        }
         return $sb;
     }
 
     public function close() {
         $sb = "";
-        $sb .= $this->generateEndingTags(self::$CLOSE_BLOCKTYPE, null, null, null, null, 0, 0);
+        $sb .= $this->generateEndingTags(self::$CLOSE_BLOCKTYPE, null, null, null, null, 0, 0, self::$TAG_BLOCK);
         return $sb;
     }
+
+    public function getHeadOpen() {
+        return $this->getFeatureString(self::$NODE_TYPE_HEADSTR, self::$FEATURE_GROUP_HEAD_OPEN, self::$TAG_NONE);
+    }
+
+    public function getBodyOpen() {
+        return $this->getFeatureString(self::$NODE_TYPE_BODYSTR, self::$FEATURE_GROUP_BODY_OPEN, self::$TAG_BODY_OPEN);
+    }
+
+    public function getHeadString($feature_group) {
+        return $this->getFeatureString(self::$NODE_TYPE_HEADSTR, $feature_group, self::$TAG_NONE);
+    }
+
+    public function getBodyString($feature_group) {
+        return $this->getFeatureString(self::$NODE_TYPE_BODYSTR, $feature_group, self::$TAG_COMMENT);
+    }
+
+    public function hasHeadString($feature_group) {
+        return $this->hasFeatureString(self::$NODE_TYPE_HEADSTR, $feature_group);
+    }
+
+    public function hasBodyString($feature_group) {
+        return $this->hasFeatureString(self::$NODE_TYPE_BODYSTR, $feature_group);
+    }
+
 }
 
 function deserializeCapsuleJson($capsule_json) {
@@ -635,7 +646,7 @@ class Node {
     protected $engineVersion;
     protected $metaString;
     protected $content;
-    // only applies to bodystr type
+    // only applies to featurestr type
     protected $feature_group;
     // only applies to redirect type
     private $redirectType;
@@ -643,7 +654,6 @@ class Node {
 
     public static $INITSTR_NODE_TYPE = "initstr";
     public static $REDIRECT_NODE_TYPE = "redirect";
-    public static $BODYSTR_NODE_TYPE = "bodystr";
 
     public function __construct() {
     }
@@ -751,18 +761,19 @@ class Capsule {
         return null;
     }
 
-    public function getBodyStringNode($feature_group) {
+    public function getNode($node_type, $feature_group) {
         if ($this->capsuleNodeList == null) {
             return null;
         }
         foreach ($this->capsuleNodeList as $node) {
 //            echo "getting node type=" . $node->getType() . " fg= " . $node->getFeatureGroup() . "<br>\n";
-            if ($node->getType() == Node::$BODYSTR_NODE_TYPE && $node->getFeatureGroup() == $feature_group) {
+            if ($node->getType() == $node_type && $node->getFeatureGroup() == $feature_group) {
                 return $node;
             }
         }
         return null;
     }
+
 
     public function getCapsuleNodeList() {
         return $this->capsuleNodeList;
@@ -985,7 +996,8 @@ class IXFSDKUtils {
      */
     public static function convertToNormalizedGoogleIndexTimeZone($epochTimeInMillis, $prefix) {
         $sb = "";
-        $current_timezone = date_default_timezone_get();
+        $current_timezone = @date_default_timezone_get();
+
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
             $sb .= strftime("${prefix}y_%Y; ${prefix}m_%m; ${prefix}d_%d; ${prefix}h_%H; ${prefix}mh_%M; ", $epochTimeInMillis / 1000);
@@ -998,7 +1010,7 @@ class IXFSDKUtils {
 
     public static function convertToNormalizedTimeZone($epochTimeInMillis, $prefix) {
         $sb = "";
-        $current_timezone = date_default_timezone_get();
+        $current_timezone = @date_default_timezone_get();
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
             $sb .= strftime("${prefix}_tstr:%a %b %d %H:%M:%S PST %Y; ", $epochTimeInMillis / 1000);
