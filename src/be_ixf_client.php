@@ -77,7 +77,7 @@ class BEIXFClient {
     public static $OTHER_BLOCKTYPE = 2;
 
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.2.0";
+    public static $CLIENT_VERSION = "1.3.0";
 
     private static $API_VERSION = "1.0.0";
 
@@ -369,9 +369,9 @@ class BEIXFClient {
             if ($blockType == self::$CLOSE_BLOCKTYPE) {
                 $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
                 if (count($this->errorMessages) > 0) {
-                    $sb .= "    <ul id=\"be_sdkms_capsule_errors\">\n";
+                    $sb .= "    <ul id=\"be_sdkms_capsule_messages\">\n";
                     foreach ($this->errorMessages as $error_msg) {
-                        $sb .= "        <li id=\"error_msg\">" . $error_msg . "</li>\n";
+                        $sb .= "    <!-- ixf_msg: " . $error_msg . " -->\n";
                     }
                     $sb .= "    </ul>\n";
                 }
@@ -505,7 +505,7 @@ class BEIXFClient {
                 $hasContent = true;
             } else {
                 array_push($this->errorMessages,
-                    'Capsule missing ' . $node_type . ' node, feature_group ' . $feature_group);
+                    'CM ' . $node_type . ' node, feature_group ' . $feature_group);
             }
         } else if ($this->isLocalContentMode()) {
             if ($this->useFlatFileForLocalFile()) {
