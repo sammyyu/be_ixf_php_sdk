@@ -10,7 +10,8 @@
     "autoload": {
         "psr-4" : {
             "BrightEdge\\" : "src/"
-        }
+        },
+        "files": ["src/be_ixf_client.php"]
     },
     "autoload-dev": {
          "psr-4": {
