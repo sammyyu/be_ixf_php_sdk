@@ -1,5 +1,8 @@
 <?php
+
 require 'be_ixf_client.php';
+use BrightEdge\BEIXFClient;
+
 $be_ixf_config = array(
 );
 $be_ixf = new BEIXFClient($be_ixf_config);

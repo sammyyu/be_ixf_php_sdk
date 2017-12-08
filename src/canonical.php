@@ -1,5 +1,6 @@
 <?php
 require 'be_ixf_client.php';
+use BrightEdge\BEIXFClient;
 $be_ixf_config = array();
 // $be_ixf_config[BEIXFClient::$CANONICAL_PAGE_CONFIG] = 'http://www.test.com/ixf-sdk/index.jsp';
 $be_ixf_config[BEIXFClient::$CANONICAL_HOST_CONFIG] = 'www.test.com';

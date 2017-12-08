@@ -1,4 +1,8 @@
 <?php
+namespace BrightEdge\Tests;
+
+use BrightEdge\IXFSDKUtils;
+
 use PHPUnit\Framework\TestCase;
 
 /**

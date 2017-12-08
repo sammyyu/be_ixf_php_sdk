@@ -1,5 +1,7 @@
 <?php
 require 'be_ixf_client.php';
+use BrightEdge\BEIXFClient;
+
 $be_ixf_config = array(
     BEIXFClient::$WHITELIST_PARAMETER_LIST_CONFIG => 'facet|pid',
 );

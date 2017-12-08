@@ -1,5 +1,7 @@
 <?php
 require 'be_ixf_client.php';
+use BrightEdge\BEIXFClient;
+
 $be_ixf_config = array(
     BEIXFClient::$API_ENDPOINT_CONFIG => 'https://api.brightedge.com',
 );

@@ -1,5 +1,7 @@
 <?php
 require 'be_ixf_client.php';
+use BrightEdge\BEIXFClient;
+
 $be_ixf_config = array(
     BEIXFClient::$ACCOUNT_ID_CONFIG => 'f00000000000123',
     BEIXFClient::$ENVIRONMENT_CONFIG => BEIXFClient::$ENVIRONMENT_PRODUCTION,

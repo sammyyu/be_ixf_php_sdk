@@ -1,4 +1,5 @@
 <?php
+namespace BrightEdge;
 /**
  * BE IXF Client class
  *
@@ -6,7 +7,25 @@
  * mod_curl must be enabled
  *
  */
-class BEIXFClient {
+
+interface BEIXFClientInterface {
+    public function close();
+
+    public function getHeadOpen();
+
+    public function getBodyOpen();
+
+    public function getHeadString($feature_group);
+
+    public function getBodyString($feature_group);
+
+    public function hasHeadString($feature_group);
+
+    public function hasBodyString($feature_group);
+
+}
+
+class BEIXFClient implements BEIXFClientInterface {
     public static $ENVIRONMENT_CONFIG = "sdk.environment";
     public static $CHARSET_CONFIG = "sdk.charset";
     public static $API_ENDPOINT_CONFIG = "api.endpoint";
@@ -77,7 +96,7 @@ class BEIXFClient {
     public static $OTHER_BLOCKTYPE = 2;
 
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.3.0";
+    public static $CLIENT_VERSION = "1.3.1";
 
     private static $API_VERSION = "1.0.0";
 
