@@ -95,8 +95,9 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $CLOSE_BLOCKTYPE = 1;
     public static $OTHER_BLOCKTYPE = 2;
 
+    public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.3.1";
+    public static $CLIENT_VERSION = "1.4.0";
 
     private static $API_VERSION = "1.0.0";
 
@@ -395,7 +396,8 @@ class BEIXFClient implements BEIXFClientInterface {
                     $sb .= "    </ul>\n";
                 }
                 if ($this->debugMode) {
-                    $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
+                    $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
+                                                            . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
                     $sb .= "    <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
                     $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
                     $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
@@ -415,6 +417,8 @@ class BEIXFClient implements BEIXFClientInterface {
                 // capsule information only applies to init block
                 if ($tagFormat == self::$TAG_BODY_OPEN) {
                     $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
+                    $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
+                                                            . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
                     $sb .= "    <li id=\"be_sdkms_capsule_connect_timer\">" . $this->connectTime . " ms</li>\n";
                     $sb .= "    <li id=\"be_sdkms_capsule_index_time\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone(round(microtime(true) * 1000), "i") .
                         "</li>\n";
