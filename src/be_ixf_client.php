@@ -23,6 +23,10 @@ interface BEIXFClientInterface {
 
     public function hasBodyString($feature_group);
 
+    public function hasRedirectNode();
+
+    public function getRedirectNodeInfo();
+
 }
 
 class BEIXFClient implements BEIXFClientInterface {
@@ -45,6 +49,9 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $CRAWLER_USER_AGENTS_CONFIG = "crawler.useragents";
     // this is for short hand mode
     public static $CAPSULE_MODE_CONFIG = "capsule.mode";
+    // defer redirect
+    public static $DEFER_REDIRECT = "defer.redirect";
+
     // directory where the resources are located
     public static $CONTENT_BASE_PATH_CONFIG = "content.base.path";
 
@@ -97,7 +104,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.0";
+    public static $CLIENT_VERSION = "1.4.1";
 
     private static $API_VERSION = "1.0.0";
 
@@ -112,6 +119,8 @@ class BEIXFClient implements BEIXFClientInterface {
     private $_capsule_response = null;
 
     private $debugMode = false;
+
+    private $deferRedirect = false;
 
     /**
      * a list of errors that is retained and spewed out in the footer primarily for
@@ -227,6 +236,10 @@ class BEIXFClient implements BEIXFClientInterface {
         if (isset($_GET["ixf-debug"])) {
             $param_value = $_GET["ixf-debug"];
             $this->debugMode = $param_value === 'true' ? true : false;
+        }
+
+        if (isset($this->config[self::$DEFER_REDIRECT]) && $this->config[self::$DEFER_REDIRECT] == "true") {
+            $this->deferRedirect = true;
         }
 
         // make URL request
@@ -379,7 +392,9 @@ class BEIXFClient implements BEIXFClientInterface {
         $this->connectTime = round(microtime(true) * 1000) - $startTime;
         $this->addtoProfileHistory("constructor", $this->connectTime);
         // placed here so we can drop the redirection as early as possible
-        $this->checkAndRedirectNode();
+        if (!$this->deferRedirect) {
+            $this->checkAndRedirectNode();
+        }
     }
 
     protected function generateEndingTags($blockType, $node_type, $publishingEngine,
@@ -498,6 +513,32 @@ class BEIXFClient implements BEIXFClientInterface {
                 header("Location: " . $redirectNode->getRedirectURL());
             }
         }
+    }
+
+    /**
+     * Returns whether or not this capsule has redirect node
+     */
+    public function hasRedirectNode() {
+        if ($this->capsule) {
+            $redirectNode = $this->capsule->getRedirectNode();
+            return $redirectNode != null;
+        }
+        return false;
+    }
+
+    /**
+     * Returns whether or not this capsule has redirect node
+     */
+    public function getRedirectNodeInfo() {
+        $retInfo = null;
+        if ($this->capsule) {
+            $redirectNode = $this->capsule->getRedirectNode();
+            if ($redirectNode != null) {
+                $retInfo = array($redirectNode->getRedirectType(),
+                             $redirectNode->getRedirectURL());
+            }
+        }
+        return $retInfo;
     }
 
     public function hasFeatureString($node_type, $feature_group) {
