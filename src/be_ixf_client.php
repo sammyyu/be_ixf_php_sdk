@@ -104,7 +104,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.1";
+    public static $CLIENT_VERSION = "1.4.2";
 
     private static $API_VERSION = "1.0.0";
 
@@ -121,6 +121,9 @@ class BEIXFClient implements BEIXFClientInterface {
     private $debugMode = false;
 
     private $deferRedirect = false;
+
+    private $_normalized_url = null;
+    private $client_user_agent = null;
 
     /**
      * a list of errors that is retained and spewed out in the footer primarily for
@@ -280,6 +283,7 @@ class BEIXFClient implements BEIXFClientInterface {
             'orig_url' => $this->_original_url,
             'user_agent' => $user_agent,
         );
+        $this->client_user_agent = $user_agent;
 
         $get_capsule_api_call_name = "get_capsule";
         if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
@@ -302,7 +306,7 @@ class BEIXFClient implements BEIXFClientInterface {
                                 "local_content", "global", "brightedge_capsule.json"));
                     }
                 } else {
-                    $page_path_for_local_path = $this->convertPagePathToLocalPath($this->normalized_url);
+                    $page_path_for_local_path = $this->convertPagePathToLocalPath($this->_normalized_url);
                     $capsule_resource_file = join(DIRECTORY_SEPARATOR,
                         array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
                             "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
@@ -314,7 +318,8 @@ class BEIXFClient implements BEIXFClientInterface {
                         'capsule file=' . $capsule_resource_file . " doesn't exist.");
                 } else {
                     $this->_capsule_response = file_get_contents($capsule_resource_file);
-                    $this->capsule = deserializeCapsuleJson($this->_capsule_response);
+                    $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_normalized_url,
+                        $this->client_user_agent);
                 }
             }
 
@@ -386,7 +391,8 @@ class BEIXFClient implements BEIXFClientInterface {
             } else {
                 // successful request parse out capsule
                 $this->_capsule_response = $request['response'];
-                $this->capsule = deserializeCapsuleJson($this->_capsule_response);
+                // normalized url
+                $this->capsule = buildCapsuleWrapper($this->_capsule_response,$this->_normalized_url,$this->client_user_agent);
             }
         }
         $this->connectTime = round(microtime(true) * 1000) - $startTime;
@@ -641,19 +647,20 @@ class BEIXFClient implements BEIXFClientInterface {
     public function hasBodyString($feature_group) {
         return $this->hasFeatureString(Node::$NODE_TYPE_BODYSTR, $feature_group);
     }
-
 }
 
 function deserializeCapsuleJson($capsule_json) {
     $capsule_array = json_decode($capsule_json);
     $capsule = new Capsule();
-//    print_r($capsule_array);
-
+    // print_r($capsule_array);
     $capsule->setVersion($capsule_array->capsule_version);
     $capsule->setAccountId($capsule_array->account_id);
     $capsule->setDateCreated((float) $capsule_array->date_created);
     $capsule->setDatePublished((float) $capsule_array->date_published);
     $capsule->setPublishingEngine($capsule_array->publishing_engine);
+    if (isset($capsule_array->config)) {
+        $capsule->setconfigList($capsule_array->config);
+    }
 
     $node_list = array();
     foreach ($capsule_array->nodes as $node_obj) {
@@ -672,10 +679,6 @@ function deserializeCapsuleJson($capsule_json) {
             $node->setContent($node_obj->content);
         }
 
-        if (isset($node_obj->content)) {
-            $node->setContent($node_obj->content);
-        }
-
         if (isset($node_obj->feature_group)) {
             $node->setFeatureGroup($node_obj->feature_group);
         }
@@ -687,11 +690,45 @@ function deserializeCapsuleJson($capsule_json) {
         if (isset($node_obj->redirect_url)) {
             $node->setRedirectURL($node_obj->redirect_url);
         }
-
         array_push($node_list, $node);
     }
     $capsule->setCapsuleNodeList($node_list);
+
     return $capsule;
+}
+
+function updateCapsule($capsule, $normalizedURL, $userAgent) {
+    $configList = $capsule->getConfigList();
+    if ($configList && $configList->redirect_rules) {
+        $rules_list = $capsule->getConfigList()->redirect_rules;
+        $rule_engine = new RuleEngine();
+        $rule_engine->setRulesArray($rules_list);
+        $auto_redirect_url = $rule_engine->evaluateRules($normalizedURL, $userAgent);
+        if (isset($auto_redirect_url) && $auto_redirect_url != $normalizedURL) {
+            $capsuleNodeList = $capsule->getCapsuleNodeList();
+            $auto_redirect = new Node();
+            $auto_redirect->setType(Node::$NODE_TYPE_REDIRECT);
+            $auto_redirect->setRedirectType(301);
+            $auto_redirect->setRedirectURL($auto_redirect_url);
+            array_push($capsuleNodeList, $auto_redirect);
+            $capsule->setCapsuleNodeList($capsuleNodeList);
+        }
+    }
+    return $capsule;
+}
+
+function buildCapsuleWrapper($capsule_json, $normalizedURL, $userAgent) {
+    $capsule = deserializeCapsuleJson($capsule_json);
+    $redirect_present = $capsule->getRedirectNode();
+    if ($redirect_present == null) {
+        $capsule = updateCapsule($capsule, $normalizedURL, $userAgent);
+    }
+    return $capsule;
+}
+
+function isBitEnabled($bit_field, $bit) {
+    $bit_mask = (1 << $bit);
+    return (bool) ($bit_field & $bit_mask);
 }
 
 class Node {
@@ -792,9 +829,18 @@ class Capsule {
     protected $datePublished;
     protected $version;
     protected $capsuleNodeList;
+    protected $configList;
 
     public function __construct() {
         $this->capsuleNodeList = null;
+    }
+
+    public function getConfigList() {
+        if ($this->configList == null) {
+            return null;
+        } else {
+            return $this->configList;
+        }
     }
 
     public function getInitStringNode() {
@@ -833,7 +879,6 @@ class Capsule {
         }
         return null;
     }
-
 
     public function getCapsuleNodeList() {
         return $this->capsuleNodeList;
@@ -881,6 +926,10 @@ class Capsule {
 
     public function setDatePublished($datePublished) {
         $this->datePublished = $datePublished;
+    }
+
+    public function setConfigList($configList) {
+        $this->configList = $configList;
     }
 }
 
@@ -1080,5 +1129,158 @@ class IXFSDKUtils {
             date_default_timezone_set($current_timezone);
         }
     }
+}
 
+class Rule {
+
+    public static $CASE_LOWER = 0;
+
+    public static $CASE_UPPER = 1;
+
+    public function __construct() {}
+
+    public static function evaluateRule($pattern, $replacement, $string) {
+        $sb = $string;
+        $matched = false;
+        try {
+            $matched = preg_match("!" . $pattern . "!i", $string) == 1;
+            $sb = preg_replace("!" . $pattern . "!i", $replacement, $string);
+        } finally {
+            return array($sb, $matched);
+        }
+    }
+
+    public static function changeCase($case, $string) {
+        $sb = $string;
+        $matched = false;
+        try {
+            if ($case === self::$CASE_LOWER) {
+                $sb = strtolower($string);
+                $matched = true;
+            } elseif ($case === self::$CASE_UPPER) {
+                $sb = strtoupper($string);
+                $matched = true;
+            }
+        } finally {
+            return array($sb, $matched);
+        }
+    }
+}
+
+class RuleEngine {
+
+    protected $rulesArray;
+
+    protected $normalizedURL;
+
+    public static $RULE_TYPE_REGEX = 'regex';
+
+    public static $RULE_TYPE_REGEX_PATH = 'regex_path';
+
+    public static $RULE_TYPE_REGEX_PARAMETER = 'regex_parameter';
+
+    public static $RULE_TYPE_CASE_PATH = 'case_path';
+
+    public static $RULE_TYPE_CASE_PARAMETER = 'case_parameter';
+
+    public static $RULE_FLAG_LAST_RULE = 0;
+
+    public function __construct() {}
+
+    public function setNormalisedURL($normalizedURL) {
+        $this->normalizedURL = $normalizedURL;
+    }
+
+    public function setRulesArray($rulesList) {
+        $this->rulesArray = json_decode(json_encode($rulesList), true);
+    }
+
+    public function getRulesArray() {
+        return $this->rulesArray;
+    }
+
+    public function getNormalizedURL() {
+        return $this->normalizedURL;
+    }
+
+    public static function build_url(array $parts) {
+        return (isset($parts['scheme']) ? "{$parts['scheme']}:" : '') .
+             ((isset($parts['user']) || isset($parts['host'])) ? '//' : '') .
+             (isset($parts['user']) ? "{$parts['user']}" : '') . (isset($parts['pass']) ? ":{$parts['pass']}" : '') .
+             (isset($parts['user']) ? '@' : '') . (isset($parts['host']) ? "{$parts['host']}" : '') .
+             (isset($parts['port']) ? ":{$parts['port']}" : '') . (isset($parts['path']) ? "{$parts['path']}" : '') .
+             (isset($parts['query']) ? "?{$parts['query']}" : '') .
+             (isset($parts['fragment']) ? "#{$parts['fragment']}" : '');
+    }
+
+    public function evaluateRules($normalizedURL, $userAgent) {
+        // TODO Replace with SERVER_USER_AGENT
+        $server_user_agent = $userAgent;
+        $rules = $this->rulesArray;
+        foreach ($rules as $rule) {
+            $urlParts = parse_url($normalizedURL);
+            $ruleName = $rule['name'];
+            $ruleType = $rule['type'];
+            $output = $normalizedURL;
+            $match = false;
+            // If user agent doesn't match, check next rule
+            if (isset($rule['user_agent_regex']) and
+                 ! (IXFSDKUtils::userAgentMatchesRegex($server_user_agent, $rule['user_agent_regex']))) {
+                continue;
+            }
+            switch ($ruleType) {
+                case self::$RULE_TYPE_CASE_PARAMETER:
+                    $case = $rule['case'];
+                    if (isset($urlParts['query'])) {
+                        $outputArray = Rule::changeCase($case, $urlParts['query']);
+                        $urlParts['query'] = $outputArray[0];
+                    }
+                    $output = RuleEngine::build_url($urlParts);
+                    break;
+                case self::$RULE_TYPE_CASE_PATH:
+                    $case = $rule['case'];
+                    if (isset($urlParts['path'])) {
+                        $outputArray = Rule::changeCase($case, $urlParts['path']);
+                        $urlParts['path'] = $outputArray[0];
+                    }
+                    $output = RuleEngine::build_url($urlParts);
+                    break;
+                case self::$RULE_TYPE_REGEX:
+                    $pattern = $rule['source_regex'];
+                    $replacement = $rule['replacement_regex'];
+                    $outputArray = Rule::evaluateRule($pattern, $replacement, $normalizedURL);
+                    $output = $outputArray[0];
+                    break;
+                case self::$RULE_TYPE_REGEX_PARAMETER:
+                    $pattern = $rule['source_regex'];
+                    $replacement = $rule['replacement_regex'];
+                    if (isset($urlParts['query'])) {
+                        $outputArray = Rule::evaluateRule($pattern, $replacement, $urlParts['query']);
+                        $urlParts['query'] = $outputArray[0];
+                    }
+                    $output = RuleEngine::build_url($urlParts);
+                    break;
+                case self::$RULE_TYPE_REGEX_PATH:
+                    $pattern = $rule['source_regex'];
+                    $replacement = $rule['replacement_regex'];
+                    if (isset($urlParts['path'])) {
+                        $outputArray = Rule::evaluateRule($pattern, $replacement, $urlParts['path']);
+                        $urlParts['path'] = $outputArray[0];
+                    }
+                    $output = RuleEngine::build_url($urlParts);
+                    break;
+                default:
+                    $output = $normalizedURL;
+            }
+            if (isset($outputArray)) {
+                $match = $outputArray[1];
+            }
+            if (isset($rule['flag']) and isBitEnabled($rule['flag'], self::$RULE_FLAG_LAST_RULE) and $match) {
+                return $output;
+            } else {
+                $normalizedURL = $output;
+            }
+        }
+        return $normalizedURL;
+    }
 }

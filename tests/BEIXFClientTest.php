@@ -1,9 +1,12 @@
 <?php
 namespace BrightEdge\Tests;
 
-use BrightEdge\IXFSDKUtils;
-
 use PHPUnit\Framework\TestCase;
+
+use BrightEdge\IXFSDKUtils;
+use BrightEdge\Rule;
+use BrightEdge\RuleEngine;
+use function BrightEdge\buildCapsuleWrapper;
 
 /**
 c:\wamp64\bin\php\php7.0.10\php.exe c:\php56\phpunit.phar --bootstrap be_ixf_client.php tests\BEIXFClientTest.php
@@ -232,10 +235,136 @@ final class BEIXFClientTest extends TestCase {
 
         // test single digit month, day, hour, and minute
         $epochTimeMillis = 1488388194000;
-        $this->assertEquals("py_2017; pm_03; pd_01; ph_09; pmh_09; p_epoch:1488388194000",
-            IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone($epochTimeMillis, "p"));
-
+        $this->assertEquals("py_2017; pm_03; pd_01; ph_09; pmh_09; p_epoch:1488388194000", IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone($epochTimeMillis, "p"));
     }
 
+    public function testForSecure() {
+        $this->assertEquals("https://www.google.com",
+            Rule::evaluateRule("^(http:\/\/)(.*)", "https://$2", "http://www.google.com")[0]);
+    }
+
+    public function testRemoveWWW() {
+        $this->assertEquals("https://google.com",
+            Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "https://www.google.com")[0]);
+        $this->assertEquals("http://google.com",
+            Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "http://www.google.com")[0]);
+    }
+
+    public function testForceWWW() {
+        $this->assertEquals("https://google.com",
+            Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "https://www.google.com")[0]);
+        $this->assertEquals("http://google.com",
+            Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "http://www.google.com")[0]);
+    }
+
+    public function testReplaceSpace() {
+        $this->assertEquals("https://google-test.com",
+            Rule::evaluateRule("[[:space:]]+", "-", "https://google test.com")[0]);
+    }
+
+    public function testCustomRule() {
+        $this->assertEquals("https://www.fivestaralliance.com/4star-hotels/london/royal-garden-hotel/",
+            Rule::evaluateRule("(.*)(\/rates\/.*)+", "$1/",
+                "https://www.fivestaralliance.com/4star-hotels/london/royal-garden-hotel/rates/d42a9f334a9b6b3cec5f93035a9288b")[0]);
+    }
+
+    public function testChangeCaseUpper() {
+        $this->assertEquals("HTTP", Rule::changeCase(1, "http")[0]);
+    }
+
+    public function testChangeCaseLower() {
+        $this->assertEquals("http", Rule::changeCase(0, "HTTP")[0]);
+    }
+
+    public function testevaluateRulesPath() {
+        $normalizedURL = "http://googletest/local a/";
+        $re = new RuleEngine();
+        $rulesArray = '[{"name":"force secure","type":"regex","source_regex":"^(http:\/\/)(.*)","replacement_regex":"https:\/\/$2","user_agent_regex":"bingbot"},
+        {"name":"replace_space_in_path","type":"regex_path","source_regex":"[[:space:]]+","replacement_regex":"-"},
+        {"name":"upper_case_parameter","type":"case_parameter","case":1,"flag":1},
+        {"name":"lower_case_path","type":"case_path","case":0}]';
+        $re->setRulesArray(json_decode($rulesArray));
+        $output = $re->evaluateRules($normalizedURL,"bingbot");
+        $this->assertEquals("https://googletest/local-a/", $output);
+    }
+
+    public function testevaluateRulesParameter() {
+        $normalizedURL = "http://googletest/local a/?local=000";
+        $re = new RuleEngine();
+        $rulesArray = '[{"name":"force secure","type":"regex","source_regex":"^(http:\/\/)(.*)","replacement_regex":"https:\/\/$2","user_agent_regex":"bingbot"},
+        {"name":"replace_space_in_path","type":"regex_path","source_regex":"[[:space:]]+","replacement_regex":"-"},
+        {"name":"upper_case_parameter","type":"case_parameter","case":1,"flag":1},
+        {"name":"lower_case_path","type":"case_path","case":0}]';
+        $re->setRulesArray(json_decode($rulesArray));
+        $output = $re->evaluateRules($normalizedURL, "bingbot");
+        $this->assertEquals("https://googletest/local-a/?LOCAL=000", $output);
+    }
+
+    public function testbuildCapsuleWrapper() {
+        $capsuleJson = '{
+    "account_id": "f00000000000123",
+    "key": "http://mycompany.com/test/index.php?a=foo&b=bar",
+    "date_created": 1501608650554,
+    "date_published": 1501608670554,
+    "publishing_engine": "capsulemaker",
+    "engine_version": "1.0.0.0",
+    "capsule_version": "1.0.0",
+    "config": { "redirect_rules":
+        [
+        {
+            "name": "force secure",
+            "type": "regex",
+            "source_regex": "^(http://)(.*)",
+            "replacement_regex": "https://$2",
+            "user_agent_regex": "bingbot"
+        },
+        {
+            "name": "replace_space_in_path",
+            "type": "regex_path",
+            "source_regex" : "%20",
+            "replacement_regex": "-",
+            "flag": 0
+        }
+        ,
+        {
+            "name": "upper_case_parameter",
+            "type": "case_parameter",
+            "case": 1,
+            "flag": 1
+        },
+        {
+            "name": "upper_case_path",
+            "type": "case_path",
+            "case": 1
+        }
+        ]
+        },
+    "nodes": [
+        {
+            "type": "initstr",
+            "date_created": 1501608650554,
+            "date_published": 1501608670554,
+            "publishing_engine": "canoncleaner",
+            "engine_version": "1.0.0.0",
+            "meta_string": "consolidated_12",
+            "content": "<meta charset=\"utf-8\" /><meta name=\"description\" content=\"Example Meta description\" /><title>IX Foundation Sample Title Local Capsule</title>"
+        },
+        {
+            "type": "bodystr",
+            "feature_type": "be_sdkms_linkblock",
+            "date_created": 1501608650554,
+            "date_published": 1501608670554,
+            "publishing_engine": "linkmaker",
+            "engine_version": "1.0.0.0",
+            "content": "<p id=\"one\">This is from test env JSON capsule</p><p id=\"two\">This is an example link block</p>"
+        }
+    ]
+}';
+        $jsonObject = json_encode(json_decode($capsuleJson));
+        $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "bingbot");
+        $node = $capsule->getRedirectNode();
+        $redirect_url = $node->getRedirectURL();
+        $this->assertEquals("https://googletest/local-a/?LOCAL=1", $redirect_url);
+    }
 }
 ?>
