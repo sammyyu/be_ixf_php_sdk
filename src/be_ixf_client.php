@@ -104,7 +104,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.2";
+    public static $CLIENT_VERSION = "1.4.3";
 
     private static $API_VERSION = "1.0.0";
 
@@ -320,6 +320,10 @@ class BEIXFClient implements BEIXFClientInterface {
                     $this->_capsule_response = file_get_contents($capsule_resource_file);
                     $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_normalized_url,
                         $this->client_user_agent);
+                    if ($this->capsule == NULL) {
+                        array_push($this->errorMessages,
+                            'capsule file=' . $capsule_resource_file . " is not valid JSON");
+                    }
                 }
             }
 
@@ -393,6 +397,10 @@ class BEIXFClient implements BEIXFClientInterface {
                 $this->_capsule_response = $request['response'];
                 // normalized url
                 $this->capsule = buildCapsuleWrapper($this->_capsule_response,$this->_normalized_url,$this->client_user_agent);
+                if ($this->capsule == NULL) {
+                    array_push($this->errorMessages,
+                        'capsule url=' . $this->_get_capsule_api_url . " is not valid JSON");
+                }
             }
         }
         $this->connectTime = round(microtime(true) * 1000) - $startTime;
@@ -651,6 +659,10 @@ class BEIXFClient implements BEIXFClientInterface {
 
 function deserializeCapsuleJson($capsule_json) {
     $capsule_array = json_decode($capsule_json);
+    // JSON is invalid
+    if ($capsule_array == NULL) {
+        return NULL;
+    }
     $capsule = new Capsule();
     // print_r($capsule_array);
     $capsule->setVersion($capsule_array->capsule_version);
@@ -719,6 +731,9 @@ function updateCapsule($capsule, $normalizedURL, $userAgent) {
 
 function buildCapsuleWrapper($capsule_json, $normalizedURL, $userAgent) {
     $capsule = deserializeCapsuleJson($capsule_json);
+    if ($capsule == NULL) {
+        return $capsule;
+    }
     $redirect_present = $capsule->getRedirectNode();
     if ($redirect_present == null) {
         $capsule = updateCapsule($capsule, $normalizedURL, $userAgent);

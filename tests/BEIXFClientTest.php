@@ -365,6 +365,11 @@ final class BEIXFClientTest extends TestCase {
         $node = $capsule->getRedirectNode();
         $redirect_url = $node->getRedirectURL();
         $this->assertEquals("https://googletest/local-a/?LOCAL=1", $redirect_url);
+
+        // test invalid JSON
+        $jsonObject = '{z';
+        $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "bingbot");
+        $this->assertEquals($capsule, NULL);
     }
 }
 ?>
