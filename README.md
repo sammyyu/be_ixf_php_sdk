@@ -1,4 +1,4 @@
-# <img src="https://www.brightedge.com/sites/all/themes/custom/brightedge_theme/logo_white.svg" height=150 alt="BrightEdge" />
+# <img src="https://raw.githubusercontent.com/sammyyu/be_ixf_php_sdk/master/brightedge.png" height=150 width="267" alt="BrightEdge" />
 
 BrightEdge IX Foundation PHP SDK
 
