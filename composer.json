@@ -3,8 +3,10 @@
     "description": "BrightEdge IX Foundation PHP SDK",
     "type": "library",
     "license": "proprietary",
+    "require": {
+        "ext-curl": "*"
+    },
     "require-dev": {
-        "ext-curl": "*",
         "phpunit/phpunit": "^4.0 || ^5.0"
     },
     "autoload": {
