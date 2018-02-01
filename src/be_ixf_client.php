@@ -710,23 +710,27 @@ function deserializeCapsuleJson($capsule_json) {
 }
 
 function updateCapsule($capsule, $normalizedURL, $userAgent) {
-    $configList = $capsule->getConfigList();
-    if ($configList && $configList->redirect_rules) {
-        $rules_list = $capsule->getConfigList()->redirect_rules;
-        $rule_engine = new RuleEngine();
-        $rule_engine->setRulesArray($rules_list);
-        $auto_redirect_url = $rule_engine->evaluateRules($normalizedURL, $userAgent);
-        if (isset($auto_redirect_url) && $auto_redirect_url != $normalizedURL) {
-            $capsuleNodeList = $capsule->getCapsuleNodeList();
-            $auto_redirect = new Node();
-            $auto_redirect->setType(Node::$NODE_TYPE_REDIRECT);
-            $auto_redirect->setRedirectType(301);
-            $auto_redirect->setRedirectURL($auto_redirect_url);
-            array_push($capsuleNodeList, $auto_redirect);
-            $capsule->setCapsuleNodeList($capsuleNodeList);
+    try {
+        $configList = $capsule->getConfigList();
+        if ($configList != null && $configList->redirect_rules != null) {
+            $rules_list = $capsule->getConfigList()->redirect_rules;
+            $rule_engine = new RuleEngine();
+            $rule_engine->setRulesArray($rules_list);
+            $auto_redirect_url = $rule_engine->evaluateRules($normalizedURL, $userAgent);
+            if (isset($auto_redirect_url) && $auto_redirect_url != $normalizedURL) {
+                $capsuleNodeList = $capsule->getCapsuleNodeList();
+                $auto_redirect = new Node();
+                $auto_redirect->setType(Node::$NODE_TYPE_REDIRECT);
+                $auto_redirect->setRedirectType(301);
+                $auto_redirect->setRedirectURL($auto_redirect_url);
+                array_push($capsuleNodeList, $auto_redirect);
+                $capsule->setCapsuleNodeList($capsuleNodeList);
+            }
         }
+        return $capsule;
+    } finally {
+        return $capsule;
     }
-    return $capsule;
 }
 
 function buildCapsuleWrapper($capsule_json, $normalizedURL, $userAgent) {
@@ -1154,12 +1158,17 @@ class Rule {
 
     public function __construct() {}
 
-    public static function evaluateRule($pattern, $replacement, $string) {
+    public static function evaluateRule($pattern, $replacement, $string, $caseInSensitiveMatch) {
         $sb = $string;
         $matched = false;
         try {
-            $matched = preg_match("!" . $pattern . "!i", $string) == 1;
-            $sb = preg_replace("!" . $pattern . "!i", $replacement, $string);
+            if ($caseInSensitiveMatch) {
+                $patternString = "/" . $pattern . "/i";
+            } else {
+                $patternString = "/" . $pattern . "/";
+            }
+            $matched = preg_match($patternString, $string) == 1;
+            $sb = preg_replace($patternString, $replacement, $string);
         } finally {
             return array($sb, $matched);
         }
@@ -1200,6 +1209,8 @@ class RuleEngine {
 
     public static $RULE_FLAG_LAST_RULE = 0;
 
+    public static $RULE_FLAG_CASE_INSENSITIVE = 0;
+
     public function __construct() {}
 
     public function setNormalisedURL($normalizedURL) {
@@ -1229,13 +1240,14 @@ class RuleEngine {
     }
 
     public function evaluateRules($normalizedURL, $userAgent) {
-        // TODO Replace with SERVER_USER_AGENT
         $server_user_agent = $userAgent;
         $rules = $this->rulesArray;
         foreach ($rules as $rule) {
             $urlParts = parse_url($normalizedURL);
             $ruleName = $rule['name'];
             $ruleType = $rule['type'];
+            $flagCaseSensitive = isset($rule['case_insensitive']) ? $rule['case_insensitive'] : 0;
+            $caseInSensitiveMatch = isBitEnabled($flagCaseSensitive, self::$RULE_FLAG_CASE_INSENSITIVE);
             $output = $normalizedURL;
             $match = false;
             // If user agent doesn't match, check next rule
@@ -1263,14 +1275,15 @@ class RuleEngine {
                 case self::$RULE_TYPE_REGEX:
                     $pattern = $rule['source_regex'];
                     $replacement = $rule['replacement_regex'];
-                    $outputArray = Rule::evaluateRule($pattern, $replacement, $normalizedURL);
+                    $outputArray = Rule::evaluateRule($pattern, $replacement, $normalizedURL, $caseInSensitiveMatch);
                     $output = $outputArray[0];
                     break;
                 case self::$RULE_TYPE_REGEX_PARAMETER:
                     $pattern = $rule['source_regex'];
                     $replacement = $rule['replacement_regex'];
                     if (isset($urlParts['query'])) {
-                        $outputArray = Rule::evaluateRule($pattern, $replacement, $urlParts['query']);
+                        $outputArray = Rule::evaluateRule($pattern, $replacement, $urlParts['query'],
+                            $caseInSensitiveMatch);
                         $urlParts['query'] = $outputArray[0];
                     }
                     $output = RuleEngine::build_url($urlParts);
@@ -1279,7 +1292,8 @@ class RuleEngine {
                     $pattern = $rule['source_regex'];
                     $replacement = $rule['replacement_regex'];
                     if (isset($urlParts['path'])) {
-                        $outputArray = Rule::evaluateRule($pattern, $replacement, $urlParts['path']);
+                        $outputArray = Rule::evaluateRule($pattern, $replacement, $urlParts['path'],
+                            $caseInSensitiveMatch);
                         $urlParts['path'] = $outputArray[0];
                     }
                     $output = RuleEngine::build_url($urlParts);

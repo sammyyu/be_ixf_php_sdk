@@ -240,32 +240,32 @@ final class BEIXFClientTest extends TestCase {
 
     public function testForSecure() {
         $this->assertEquals("https://www.google.com",
-            Rule::evaluateRule("^(http:\/\/)(.*)", "https://$2", "http://www.google.com")[0]);
+            Rule::evaluateRule("^(http:\/\/)(.*)", "https://$2", "http://www.google.com", false)[0]);
     }
 
     public function testRemoveWWW() {
         $this->assertEquals("https://google.com",
-            Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "https://www.google.com")[0]);
+            Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "https://www.google.com", false)[0]);
         $this->assertEquals("http://google.com",
-            Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "http://www.google.com")[0]);
+            Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "http://www.google.com", false)[0]);
     }
 
     public function testForceWWW() {
-        $this->assertEquals("https://google.com",
-            Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "https://www.google.com")[0]);
-        $this->assertEquals("http://google.com",
-            Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "http://www.google.com")[0]);
+        $this->assertEquals("https://www.google.com",
+            Rule::evaluateRule("(https?):\/\/((?!www).*)", "$1://www.$2", "https://google.com", false)[0]);
+        $this->assertEquals("http://www.google.com",
+            Rule::evaluateRule("(https?):\/\/((?!www).*)", "$1://www.$2", "http://google.com", false)[0]);
     }
 
     public function testReplaceSpace() {
         $this->assertEquals("https://google-test.com",
-            Rule::evaluateRule("[[:space:]]+", "-", "https://google test.com")[0]);
+            Rule::evaluateRule("%20", "-", "https://google%20test.com", false)[0]);
     }
 
     public function testCustomRule() {
-        $this->assertEquals("https://www.fivestaralliance.com/4star-hotels/london/royal-garden-hotel/",
-            Rule::evaluateRule("(.*)(\/rates\/.*)+", "$1/",
-                "https://www.fivestaralliance.com/4star-hotels/london/royal-garden-hotel/rates/d42a9f334a9b6b3cec5f93035a9288b")[0]);
+        $this->assertEquals("https://www.hotelsbook.com/4star-hotels/london/royal-garden-hotel/",
+            Rule::evaluateRule("(.*)(\/RATES\/.*)+", "$1/",
+                "https://www.hotelsbook.com/4star-hotels/london/royal-garden-hotel/rates/d42a9f334a9b6b3cec5f93035a9288b", true)[0]);
     }
 
     public function testChangeCaseUpper() {
@@ -279,20 +279,20 @@ final class BEIXFClientTest extends TestCase {
     public function testevaluateRulesPath() {
         $normalizedURL = "http://googletest/local a/";
         $re = new RuleEngine();
-        $rulesArray = '[{"name":"force secure","type":"regex","source_regex":"^(http:\/\/)(.*)","replacement_regex":"https:\/\/$2","user_agent_regex":"bingbot"},
+        $rulesArray = '[{"name":"force secure","type":"regex","source_regex":"^(http:\\\/\\\/)(.*)","replacement_regex":"https://$2","user_agent_regex":"bingbot"},
         {"name":"replace_space_in_path","type":"regex_path","source_regex":"[[:space:]]+","replacement_regex":"-"},
         {"name":"upper_case_parameter","type":"case_parameter","case":1,"flag":1},
         {"name":"lower_case_path","type":"case_path","case":0}]';
         $re->setRulesArray(json_decode($rulesArray));
-        $output = $re->evaluateRules($normalizedURL,"bingbot");
+        $output = $re->evaluateRules($normalizedURL, "bingbot");
         $this->assertEquals("https://googletest/local-a/", $output);
     }
 
     public function testevaluateRulesParameter() {
-        $normalizedURL = "http://googletest/local a/?local=000";
+        $normalizedURL = "HTTP://googletest/local%20%20%20a/?local=000";
         $re = new RuleEngine();
-        $rulesArray = '[{"name":"force secure","type":"regex","source_regex":"^(http:\/\/)(.*)","replacement_regex":"https:\/\/$2","user_agent_regex":"bingbot"},
-        {"name":"replace_space_in_path","type":"regex_path","source_regex":"[[:space:]]+","replacement_regex":"-"},
+        $rulesArray = '[{"name":"force secure","type":"regex","source_regex":"^(http:\\\/\\\/)(.*)","replacement_regex":"https://$2","case_insensitive": 1},
+        {"name":"replace_space_in_path","type":"regex_path","source_regex":"[%20]+","replacement_regex":"-"},
         {"name":"upper_case_parameter","type":"case_parameter","case":1,"flag":1},
         {"name":"lower_case_path","type":"case_path","case":0}]';
         $re->setRulesArray(json_decode($rulesArray));
@@ -314,9 +314,10 @@ final class BEIXFClientTest extends TestCase {
         {
             "name": "force secure",
             "type": "regex",
-            "source_regex": "^(http://)(.*)",
+            "source_regex": "^(HTTP:\\\/\\\/)(.*)",
             "replacement_regex": "https://$2",
-            "user_agent_regex": "bingbot"
+            "user_agent_regex": "bingbot",
+            "case_insensitive": 1
         },
         {
             "name": "replace_space_in_path",
@@ -370,6 +371,45 @@ final class BEIXFClientTest extends TestCase {
         $jsonObject = '{z';
         $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "bingbot");
         $this->assertEquals($capsule, NULL);
+    }
+
+    public function testbuildCapsuleWrapperEmptyConfig() {
+        $capsuleJson = '{
+    "account_id": "f00000000000123",
+    "key": "http://mycompany.com/test/index.php?a=foo&b=bar",
+    "date_created": 1501608650554,
+    "date_published": 1501608670554,
+    "publishing_engine": "capsulemaker",
+    "engine_version": "1.0.0.0",
+    "capsule_version": "1.0.0",
+    "config": { "redirect_rules":
+        [
+        ]
+        },
+    "nodes": [
+        {
+            "type": "initstr",
+            "date_created": 1501608650554,
+            "date_published": 1501608670554,
+            "publishing_engine": "canoncleaner",
+            "engine_version": "1.0.0.0",
+            "meta_string": "consolidated_12",
+            "content": "<meta charset=\"utf-8\" /><meta name=\"description\" content=\"Example Meta description\" /><title>IX Foundation Sample Title Local Capsule</title>"
+        },
+        {
+            "type": "bodystr",
+            "feature_type": "be_sdkms_linkblock",
+            "date_created": 1501608650554,
+            "date_published": 1501608670554,
+            "publishing_engine": "linkmaker",
+            "engine_version": "1.0.0.0",
+            "content": "<p id=\"one\">This is from test env JSON capsule</p><p id=\"two\">This is an example link block</p>"
+        }
+    ]
+}';
+        $jsonObject = json_encode(json_decode($capsuleJson));
+        $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "bingbot");
+        $this->assertEquals($capsule->getRedirectNode(), NULL);
     }
 }
 ?>
