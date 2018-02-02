@@ -16,6 +16,21 @@ c:\wamp64\bin\php\php7.0.10\php.exe c:\php56\phpunit.phar --bootstrap be_ixf_cli
  * @covers BEIXFClient
  */
 final class BEIXFClientTest extends TestCase {
+
+    public function testIsBitEnabled() {
+        $this->assertFalse(IXFSDKUtils::isBitEnabled(0, 0));
+        $this->assertTrue(IXFSDKUtils::isBitEnabled(1, 0));
+        $this->assertTrue(IXFSDKUtils::isBitEnabled(3, 0));
+        $this->assertFalse(IXFSDKUtils::isBitEnabled(2, 0));
+
+        $this->assertFalse(IXFSDKUtils::isBitEnabled(0, 1));
+        $this->assertFalse(IXFSDKUtils::isBitEnabled(1, 1));
+        $this->assertTrue(IXFSDKUtils::isBitEnabled(2, 1));
+        $this->assertTrue(IXFSDKUtils::isBitEnabled(3, 1));
+        $this->assertFalse(IXFSDKUtils::isBitEnabled(4, 1));
+        $this->assertTrue(IXFSDKUtils::isBitEnabled(6, 1));
+    }
+
     public function testGetSignedNumber() {
         $this->assertEquals(
             5,
@@ -243,19 +258,6 @@ final class BEIXFClientTest extends TestCase {
             Rule::evaluateRule("^(http:\/\/)(.*)", "https://$2", "http://www.google.com", false)[0]);
     }
 
-    public function testIsBitEnabled() {
-        $this->assertFalse(isBitEnabled(0, 0));
-        $this->assertTrue(isBitEnabled(1, 0));
-        $this->assertTrue(isBitEnabled(3, 0));
-        $this->assertFalse(isBitEnabled(2, 0));
-
-        $this->assertFalse(isBitEnabled(0, 1));
-        $this->assertFalse(isBitEnabled(1, 1));
-        $this->assertTrue(isBitEnabled(2, 1));
-        $this->assertTrue(isBitEnabled(3, 1));
-        $this->assertFalse(isBitEnabled(4, 1));
-        $this->assertTrue(isBitEnabled(6, 1));
-    }
     public function testRemoveWWW() {
         $this->assertEquals("https://google.com",
             Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "https://www.google.com", false)[0]);
@@ -395,7 +397,7 @@ final class BEIXFClientTest extends TestCase {
     "publishing_engine": "capsulemaker",
     "engine_version": "1.0.0.0",
     "capsule_version": "1.0.0",
-    "config": { "redirect_rules":
+    "config": {"redirect_rules":
         [
         ]
         },

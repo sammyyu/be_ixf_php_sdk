@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.4] - 2018-02-01
+### Fixed
+- regex escaping
+### Added
+- case insensitive rule flag
 
 ## [1.4.3] - 2018-01-30
 ### Changed

@@ -104,7 +104,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.3";
+    public static $CLIENT_VERSION = "1.4.4";
 
     private static $API_VERSION = "1.0.0";
 
@@ -745,11 +745,6 @@ function buildCapsuleWrapper($capsule_json, $normalizedURL, $userAgent) {
     return $capsule;
 }
 
-function isBitEnabled($bit_field, $bit) {
-    $bit_mask = (1 << $bit);
-    return (bool) ($bit_field & $bit_mask);
-}
-
 class Node {
     protected $type;
     protected $dateCreated;
@@ -953,6 +948,12 @@ class Capsule {
 }
 
 class IXFSDKUtils {
+    public static function isBitEnabled($bit_field, $bit) {
+        $bit_mask = (1 << $bit);
+        return (bool) ($bit_field & $bit_mask);
+    }
+
+
     public static function getSignedNumber($number) {
         $bitLength = 32;
         $mask = pow(2, $bitLength) - 1;
@@ -1246,7 +1247,7 @@ class RuleEngine {
             $urlParts = parse_url($normalizedURL);
             $ruleName = $rule['name'];
             $ruleType = $rule['type'];
-            $caseInSensitiveMatch = isBitEnabled($rule['flag'], self::$RULE_FLAG_CASE_INSENSITIVE);
+            $caseInSensitiveMatch = IXFSDKUtils::isBitEnabled($rule['flag'], self::$RULE_FLAG_CASE_INSENSITIVE);
             $output = $normalizedURL;
             $match = false;
             // If user agent doesn't match, check next rule
@@ -1303,7 +1304,7 @@ class RuleEngine {
             if (isset($outputArray)) {
                 $match = $outputArray[1];
             }
-            if (isBitEnabled($rule['flag'], self::$RULE_FLAG_LAST_RULE) && $match) {
+            if (IXFSDKUtils::isBitEnabled($rule['flag'], self::$RULE_FLAG_LAST_RULE) && $match) {
                 return $output;
             } else {
                 $normalizedURL = $output;
