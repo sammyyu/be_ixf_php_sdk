@@ -243,6 +243,19 @@ final class BEIXFClientTest extends TestCase {
             Rule::evaluateRule("^(http:\/\/)(.*)", "https://$2", "http://www.google.com", false)[0]);
     }
 
+    public function testIsBitEnabled() {
+        $this->assertFalse(isBitEnabled(0, 0));
+        $this->assertTrue(isBitEnabled(1, 0));
+        $this->assertTrue(isBitEnabled(3, 0));
+        $this->assertFalse(isBitEnabled(2, 0));
+
+        $this->assertFalse(isBitEnabled(0, 1));
+        $this->assertFalse(isBitEnabled(1, 1));
+        $this->assertTrue(isBitEnabled(2, 1));
+        $this->assertTrue(isBitEnabled(3, 1));
+        $this->assertFalse(isBitEnabled(4, 1));
+        $this->assertTrue(isBitEnabled(6, 1));
+    }
     public function testRemoveWWW() {
         $this->assertEquals("https://google.com",
             Rule::evaluateRule("^(https?)\:\/\/www.(.*)", "$1://$2", "https://www.google.com", false)[0]);
@@ -279,8 +292,8 @@ final class BEIXFClientTest extends TestCase {
     public function testevaluateRulesPath() {
         $normalizedURL = "http://googletest/local a/";
         $re = new RuleEngine();
-        $rulesArray = '[{"name":"force secure","type":"regex","source_regex":"^(http:\\\/\\\/)(.*)","replacement_regex":"https://$2","user_agent_regex":"bingbot"},
-        {"name":"replace_space_in_path","type":"regex_path","source_regex":"[[:space:]]+","replacement_regex":"-"},
+        $rulesArray = '[{"name":"force secure","type":"regex","source_regex":"^(http:\\\/\\\/)(.*)","replacement_regex":"https://$2","user_agent_regex":"bingbot","flag":0},
+        {"name":"replace_space_in_path","type":"regex_path","source_regex":"[[:space:]]+","replacement_regex":"-","flag":0},
         {"name":"upper_case_parameter","type":"case_parameter","case":1,"flag":1},
         {"name":"lower_case_path","type":"case_path","case":0}]';
         $re->setRulesArray(json_decode($rulesArray));
@@ -291,8 +304,8 @@ final class BEIXFClientTest extends TestCase {
     public function testevaluateRulesParameter() {
         $normalizedURL = "HTTP://googletest/local%20%20%20a/?local=000";
         $re = new RuleEngine();
-        $rulesArray = '[{"name":"force secure","type":"regex","source_regex":"^(http:\\\/\\\/)(.*)","replacement_regex":"https://$2","case_insensitive": 1},
-        {"name":"replace_space_in_path","type":"regex_path","source_regex":"[%20]+","replacement_regex":"-"},
+        $rulesArray = '[{"name":"force secure","type":"regex","source_regex":"^(http:\\\/\\\/)(.*)","replacement_regex":"https://$2","flag": 2},
+        {"name":"replace_space_in_path","type":"regex_path","source_regex":"[%20]+","replacement_regex":"-","flag":0},
         {"name":"upper_case_parameter","type":"case_parameter","case":1,"flag":1},
         {"name":"lower_case_path","type":"case_path","case":0}]';
         $re->setRulesArray(json_decode($rulesArray));
@@ -317,7 +330,7 @@ final class BEIXFClientTest extends TestCase {
             "source_regex": "^(HTTP:\\\/\\\/)(.*)",
             "replacement_regex": "https://$2",
             "user_agent_regex": "bingbot",
-            "case_insensitive": 1
+            "flag": 2
         },
         {
             "name": "replace_space_in_path",
@@ -325,8 +338,7 @@ final class BEIXFClientTest extends TestCase {
             "source_regex" : "%20",
             "replacement_regex": "-",
             "flag": 0
-        }
-        ,
+        },
         {
             "name": "upper_case_parameter",
             "type": "case_parameter",
@@ -336,10 +348,11 @@ final class BEIXFClientTest extends TestCase {
         {
             "name": "upper_case_path",
             "type": "case_path",
-            "case": 1
+            "case": 1,
+            "flag": 0
         }
         ]
-        },
+    },
     "nodes": [
         {
             "type": "initstr",

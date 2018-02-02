@@ -1209,7 +1209,7 @@ class RuleEngine {
 
     public static $RULE_FLAG_LAST_RULE = 0;
 
-    public static $RULE_FLAG_CASE_INSENSITIVE = 0;
+    public static $RULE_FLAG_CASE_INSENSITIVE = 1;
 
     public function __construct() {}
 
@@ -1246,8 +1246,7 @@ class RuleEngine {
             $urlParts = parse_url($normalizedURL);
             $ruleName = $rule['name'];
             $ruleType = $rule['type'];
-            $flagCaseSensitive = isset($rule['case_insensitive']) ? $rule['case_insensitive'] : 0;
-            $caseInSensitiveMatch = isBitEnabled($flagCaseSensitive, self::$RULE_FLAG_CASE_INSENSITIVE);
+            $caseInSensitiveMatch = isBitEnabled($rule['flag'], self::$RULE_FLAG_CASE_INSENSITIVE);
             $output = $normalizedURL;
             $match = false;
             // If user agent doesn't match, check next rule
@@ -1304,7 +1303,7 @@ class RuleEngine {
             if (isset($outputArray)) {
                 $match = $outputArray[1];
             }
-            if (isset($rule['flag']) and isBitEnabled($rule['flag'], self::$RULE_FLAG_LAST_RULE) and $match) {
+            if (isBitEnabled($rule['flag'], self::$RULE_FLAG_LAST_RULE) && $match) {
                 return $output;
             } else {
                 $normalizedURL = $output;
