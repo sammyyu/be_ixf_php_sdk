@@ -712,7 +712,7 @@ function deserializeCapsuleJson($capsule_json) {
 function updateCapsule($capsule, $normalizedURL, $userAgent) {
     try {
         $configList = $capsule->getConfigList();
-        if ($configList != null && $configList->redirect_rules != null) {
+        if ($configList != null && isset($configList->redirect_rules)) {
             $rules_list = $capsule->getConfigList()->redirect_rules;
             $rule_engine = new RuleEngine();
             $rule_engine->setRulesArray($rules_list);
