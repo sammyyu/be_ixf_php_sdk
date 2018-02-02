@@ -31,6 +31,21 @@ final class BEIXFClientTest extends TestCase {
         $this->assertTrue(IXFSDKUtils::isBitEnabled(6, 1));
     }
 
+    public function testGetBooleanValue() {
+        $this->assertFalse(IXFSDKUtils::getBooleanValue("F"));
+        $this->assertFalse(IXFSDKUtils::getBooleanValue("false"));
+        $this->assertFalse(IXFSDKUtils::getBooleanValue("o"));
+        $this->assertFalse(IXFSDKUtils::getBooleanValue(""));
+        $this->assertFalse(IXFSDKUtils::getBooleanValue(NULL));
+
+        // $this->assertTrue(IXFSDKUtils::getBooleanValue("true"));
+        // $this->assertTrue(IXFSDKUtils::getBooleanValue("True"));
+        // $this->assertTrue(IXFSDKUtils::getBooleanValue("on"));
+        // $this->assertTrue(IXFSDKUtils::getBooleanValue("T"));
+        // $this->assertTrue(IXFSDKUtils::getBooleanValue("t"));
+        $this->assertTrue(IXFSDKUtils::getBooleanValue("1"));
+    }
+
     public function testGetSignedNumber() {
         $this->assertEquals(
             5,

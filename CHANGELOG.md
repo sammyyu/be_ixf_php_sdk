@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.5] - 2018-02-02
+### Added
+- ixf-disable-redirect parameter turns off redirect
+
 ## [1.4.4] - 2018-02-01
 ### Fixed
 - regex escaping

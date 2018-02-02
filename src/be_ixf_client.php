@@ -104,7 +104,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.4";
+    public static $CLIENT_VERSION = "1.4.5";
 
     private static $API_VERSION = "1.0.0";
 
@@ -119,6 +119,10 @@ class BEIXFClient implements BEIXFClientInterface {
     private $_capsule_response = null;
 
     private $debugMode = false;
+    /**
+     * This is used when we are debugging the source of the redirect to turn if off
+     */
+    private $disableRedirect = false;
 
     private $deferRedirect = false;
 
@@ -238,11 +242,17 @@ class BEIXFClient implements BEIXFClientInterface {
 
         if (isset($_GET["ixf-debug"])) {
             $param_value = $_GET["ixf-debug"];
-            $this->debugMode = $param_value === 'true' ? true : false;
+            $this->debugMode = IXFSDKUtils::getBooleanValue($param_value);
         }
 
-        if (isset($this->config[self::$DEFER_REDIRECT]) && $this->config[self::$DEFER_REDIRECT] == "true") {
-            $this->deferRedirect = true;
+        if (isset($_GET["ixf-disable-redirect"])) {
+            $param_value = $_GET["ixf-disable-redirect"];
+            $this->disableRedirect = IXFSDKUtils::getBooleanValue($param_value);
+        }
+
+        if (isset($this->config[self::$DEFER_REDIRECT])) {
+            $str_value = $this->config[self::$DEFER_REDIRECT];
+            $this->deferRedirect = IXFSDKUtils::getBooleanValue($str_value);
         }
 
         // make URL request
@@ -522,7 +532,7 @@ class BEIXFClient implements BEIXFClientInterface {
     public function checkAndRedirectNode() {
         if ($this->capsule) {
             $redirectNode = $this->capsule->getRedirectNode();
-            if ($redirectNode != null) {
+            if ($redirectNode != null && !$this->disableRedirect) {
                 http_response_code($redirectNode->getRedirectType());
                 header("Location: " . $redirectNode->getRedirectURL());
             }
@@ -547,7 +557,7 @@ class BEIXFClient implements BEIXFClientInterface {
         $retInfo = null;
         if ($this->capsule) {
             $redirectNode = $this->capsule->getRedirectNode();
-            if ($redirectNode != null) {
+            if ($redirectNode != null && !$this->disableRedirect) {
                 $retInfo = array($redirectNode->getRedirectType(),
                              $redirectNode->getRedirectURL());
             }
@@ -953,6 +963,20 @@ class IXFSDKUtils {
         return (bool) ($bit_field & $bit_mask);
     }
 
+    public static function getBooleanValue($string_value) {
+        if (!isset($string_value) || strlen($string_value)==0) {
+            return false;
+        }
+        $norm_string_value = strtolower($string_value);
+        $ret_value = ($norm_string_value == 'true' ? true : false);
+        if (!$ret_value) {
+            $ret_value = ($norm_string_value == 'on' ? true : false);
+        }
+        if (!$ret_value) {
+            $ret_value = ($norm_string_value[0] == '1' ? true : false);
+        }
+        return $ret_value;
+    }
 
     public static function getSignedNumber($number) {
         $bitLength = 32;
