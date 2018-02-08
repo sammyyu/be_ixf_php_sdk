@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.6] - 2018-02-08
+### Added
+- apply config rules to original url fix
+- add brightedge user agent
+
 ## [1.4.5] - 2018-02-02
 ### Added
 - ixf-disable-redirect parameter turns off redirect

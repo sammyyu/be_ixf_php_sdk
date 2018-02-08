@@ -104,7 +104,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.5";
+    public static $CLIENT_VERSION = "1.4.6";
 
     private static $API_VERSION = "1.0.0";
 
@@ -328,7 +328,7 @@ class BEIXFClient implements BEIXFClientInterface {
                         'capsule file=' . $capsule_resource_file . " doesn't exist.");
                 } else {
                     $this->_capsule_response = file_get_contents($capsule_resource_file);
-                    $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_normalized_url,
+                    $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_original_url,
                         $this->client_user_agent);
                     if ($this->capsule == NULL) {
                         array_push($this->errorMessages,
@@ -406,7 +406,7 @@ class BEIXFClient implements BEIXFClientInterface {
                 // successful request parse out capsule
                 $this->_capsule_response = $request['response'];
                 // normalized url
-                $this->capsule = buildCapsuleWrapper($this->_capsule_response,$this->_normalized_url,$this->client_user_agent);
+                $this->capsule = buildCapsuleWrapper($this->_capsule_response,$this->_original_url,$this->client_user_agent);
                 if ($this->capsule == NULL) {
                     array_push($this->errorMessages,
                         'capsule url=' . $this->_get_capsule_api_url . " is not valid JSON");
@@ -743,14 +743,14 @@ function updateCapsule($capsule, $normalizedURL, $userAgent) {
     }
 }
 
-function buildCapsuleWrapper($capsule_json, $normalizedURL, $userAgent) {
+function buildCapsuleWrapper($capsule_json, $original_url, $userAgent) {
     $capsule = deserializeCapsuleJson($capsule_json);
     if ($capsule == NULL) {
         return $capsule;
     }
     $redirect_present = $capsule->getRedirectNode();
     if ($redirect_present == null) {
-        $capsule = updateCapsule($capsule, $normalizedURL, $userAgent);
+        $capsule = updateCapsule($capsule, $original_url, $userAgent);
     }
     return $capsule;
 }
@@ -1220,8 +1220,6 @@ class RuleEngine {
 
     protected $rulesArray;
 
-    protected $normalizedURL;
-
     public static $RULE_TYPE_REGEX = 'regex';
 
     public static $RULE_TYPE_REGEX_PATH = 'regex_path';
@@ -1238,20 +1236,12 @@ class RuleEngine {
 
     public function __construct() {}
 
-    public function setNormalisedURL($normalizedURL) {
-        $this->normalizedURL = $normalizedURL;
-    }
-
     public function setRulesArray($rulesList) {
         $this->rulesArray = json_decode(json_encode($rulesList), true);
     }
 
     public function getRulesArray() {
         return $this->rulesArray;
-    }
-
-    public function getNormalizedURL() {
-        return $this->normalizedURL;
     }
 
     public static function build_url(array $parts) {
@@ -1264,15 +1254,15 @@ class RuleEngine {
              (isset($parts['fragment']) ? "#{$parts['fragment']}" : '');
     }
 
-    public function evaluateRules($normalizedURL, $userAgent) {
+    public function evaluateRules($original_url, $userAgent) {
         $server_user_agent = $userAgent;
         $rules = $this->rulesArray;
         foreach ($rules as $rule) {
-            $urlParts = parse_url($normalizedURL);
+            $urlParts = parse_url($original_url);
             $ruleName = $rule['name'];
             $ruleType = $rule['type'];
             $caseInSensitiveMatch = IXFSDKUtils::isBitEnabled($rule['flag'], self::$RULE_FLAG_CASE_INSENSITIVE);
-            $output = $normalizedURL;
+            $output = $original_url;
             $match = false;
             // If user agent doesn't match, check next rule
             if (isset($rule['user_agent_regex']) and
@@ -1299,7 +1289,7 @@ class RuleEngine {
                 case self::$RULE_TYPE_REGEX:
                     $pattern = $rule['source_regex'];
                     $replacement = $rule['replacement_regex'];
-                    $outputArray = Rule::evaluateRule($pattern, $replacement, $normalizedURL, $caseInSensitiveMatch);
+                    $outputArray = Rule::evaluateRule($pattern, $replacement, $original_url, $caseInSensitiveMatch);
                     $output = $outputArray[0];
                     break;
                 case self::$RULE_TYPE_REGEX_PARAMETER:
@@ -1323,7 +1313,7 @@ class RuleEngine {
                     $output = RuleEngine::build_url($urlParts);
                     break;
                 default:
-                    $output = $normalizedURL;
+                    $output = $original_url;
             }
             if (isset($outputArray)) {
                 $match = $outputArray[1];
@@ -1331,9 +1321,9 @@ class RuleEngine {
             if (IXFSDKUtils::isBitEnabled($rule['flag'], self::$RULE_FLAG_LAST_RULE) && $match) {
                 return $output;
             } else {
-                $normalizedURL = $output;
+                $original_url = $output;
             }
         }
-        return $normalizedURL;
+        return $original_url;
     }
 }
