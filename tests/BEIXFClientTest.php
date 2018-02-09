@@ -37,12 +37,11 @@ final class BEIXFClientTest extends TestCase {
         $this->assertFalse(IXFSDKUtils::getBooleanValue("o"));
         $this->assertFalse(IXFSDKUtils::getBooleanValue(""));
         $this->assertFalse(IXFSDKUtils::getBooleanValue(NULL));
-
-        // $this->assertTrue(IXFSDKUtils::getBooleanValue("true"));
-        // $this->assertTrue(IXFSDKUtils::getBooleanValue("True"));
-        // $this->assertTrue(IXFSDKUtils::getBooleanValue("on"));
-        // $this->assertTrue(IXFSDKUtils::getBooleanValue("T"));
-        // $this->assertTrue(IXFSDKUtils::getBooleanValue("t"));
+        $this->assertTrue(IXFSDKUtils::getBooleanValue("true"));
+        $this->assertTrue(IXFSDKUtils::getBooleanValue("True"));
+        $this->assertTrue(IXFSDKUtils::getBooleanValue("on"));
+        $this->assertTrue(IXFSDKUtils::getBooleanValue("T"));
+        $this->assertTrue(IXFSDKUtils::getBooleanValue("t"));
         $this->assertTrue(IXFSDKUtils::getBooleanValue("1"));
     }
 
@@ -328,6 +327,26 @@ final class BEIXFClientTest extends TestCase {
         $re->setRulesArray(json_decode($rulesArray));
         $output = $re->evaluateRules($normalizedURL, "bingbot");
         $this->assertEquals("https://googletest/local-a/?LOCAL=000", $output);
+    }
+
+    public function testBuildURL() {
+        $url1 = "http://my.domain.com/my_page/str/?arg1=this&amp;arg2=that";
+        $urlParts = parse_url($url1);
+        $urlParts['path'] = "/my/";
+        $output1 = RuleEngine::build_url($urlParts);
+        $this->assertEquals($output1, "http://my.domain.com/my/?arg1=this&amp;arg2=that");
+
+        $url2 = "http://my.domain.com/my%20page/str/?key=%20%27&key2=%C3%A1";
+        $urlParts = parse_url($url2);
+        $urlParts['path'] = "/my%20new%20path/";
+        $output2 = RuleEngine::build_url($urlParts);
+        $this->assertEquals($output2, "http://my.domain.com/my%20new%20path/?key=%20%27&key2=%C3%A1");
+
+        $url3 = "http://my.domain.com/my%20page/?key=%20%27";
+        $urlParts = parse_url($url3);
+        $urlParts['query'] = "key=%20%27&key2=%C3%A1";
+        $output3 = RuleEngine::build_url($urlParts);
+        $this->assertEquals($output3, "http://my.domain.com/my%20page/?key=%20%27&key2=%C3%A1");
     }
 
     public function testbuildCapsuleWrapper() {

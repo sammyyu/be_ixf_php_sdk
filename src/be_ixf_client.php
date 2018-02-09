@@ -92,7 +92,7 @@ class BEIXFClient implements BEIXFClientInterface {
     // a list of query string parameters that are kept separated by |
     public static $DEFAULT_WHITELIST_PARAMETER_LIST = "";
     // a list of crawler user agents case insensitive regex, so separate by |
-    public static $DEFAULT_CRAWLER_USER_AGENTS = "google|bingbot|msnbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|ia_archiver";
+    public static $DEFAULT_CRAWLER_USER_AGENTS = "google|bingbot|msnbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|ia_archiver|brightedge";
 
     public static $TAG_NONE = 0;
     public static $TAG_BODY_OPEN = 1;
@@ -973,7 +973,8 @@ class IXFSDKUtils {
             $ret_value = ($norm_string_value == 'on' ? true : false);
         }
         if (!$ret_value) {
-            $ret_value = ($norm_string_value[0] == '1' ? true : false);
+            $char_index_one = $norm_string_value[0];
+            $ret_value = ($char_index_one == '1' || $char_index_one == 't' ) ? true : false;
         }
         return $ret_value;
     }
