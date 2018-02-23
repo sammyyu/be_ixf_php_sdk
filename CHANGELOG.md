@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.4.7] - 2018-02-23
+### Fixed
+- Address issue when $_SERVER[HTTP] is missing
+
 ## [1.4.6] - 2018-02-08
 ### Added
 - apply config rules to original url fix

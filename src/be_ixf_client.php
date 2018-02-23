@@ -104,7 +104,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.6";
+    public static $CLIENT_VERSION = "1.4.7";
 
     private static $API_VERSION = "1.0.0";
 
@@ -271,8 +271,14 @@ class BEIXFClient implements BEIXFClientInterface {
             $socket_timeout = $this->config[self::$CRAWLER_SOCKET_TIMEOUT_CONFIG];
         }
 
-        $this->_original_url = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+        $is_https = isset($_SERVER['HTTPS']);
+        // work around for when HTTPS is not set even though it is https
+        if (!$is_https && isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) {
+            $is_https = true;
+        }
+        $this->_original_url = ($is_https ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
         $this->_normalized_url = $this->_original_url;
+
         // #1 one construct the canonical URL
         if (isset($this->config[self::$CANONICAL_PAGE_CONFIG])) {
             $this->_normalized_url = $this->config[self::$CANONICAL_PAGE_CONFIG];
@@ -406,7 +412,7 @@ class BEIXFClient implements BEIXFClientInterface {
                 // successful request parse out capsule
                 $this->_capsule_response = $request['response'];
                 // normalized url
-                $this->capsule = buildCapsuleWrapper($this->_capsule_response,$this->_original_url,$this->client_user_agent);
+                $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_original_url, x$this->client_user_agent);
                 if ($this->capsule == NULL) {
                     array_push($this->errorMessages,
                         'capsule url=' . $this->_get_capsule_api_url . " is not valid JSON");
