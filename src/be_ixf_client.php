@@ -412,7 +412,7 @@ class BEIXFClient implements BEIXFClientInterface {
                 // successful request parse out capsule
                 $this->_capsule_response = $request['response'];
                 // normalized url
-                $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_original_url, x$this->client_user_agent);
+                $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_original_url, $this->client_user_agent);
                 if ($this->capsule == NULL) {
                     array_push($this->errorMessages,
                         'capsule url=' . $this->_get_capsule_api_url . " is not valid JSON");
