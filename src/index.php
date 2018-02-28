@@ -4,6 +4,7 @@ use BrightEdge\BEIXFClient;
 
 $be_ixf_config = array(
     BEIXFClient::$ENVIRONMENT_CONFIG => BEIXFClient::$ENVIRONMENT_PRODUCTION,
+//    BEIXFClient::$CANONICAL_PROTOCOL_CONFIG => BEIXFClient::$CANONICAL_PROTOCOL_HTTPS,
 
     // Comment/uncomment the following CAPSULE_MODE_CONFIG options to for testing/dubugging
     BEIXFClient::$CAPSULE_MODE_CONFIG => BEIXFClient::$LOCAL_GLOBAL_CAPSULE_MODE, //use this to test connection to be_ixf_client.php
