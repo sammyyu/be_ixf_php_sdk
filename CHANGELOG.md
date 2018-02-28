@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.4.8] - 2018-02-27
+### Fixed
+- Added CANONICAL_PROTOCOL_CONFIG
+
 ## [1.4.7] - 2018-02-23
 ### Fixed
 - Address issue when $_SERVER[HTTP] is missing

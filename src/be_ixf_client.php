@@ -55,6 +55,7 @@ class BEIXFClient implements BEIXFClientInterface {
     // directory where the resources are located
     public static $CONTENT_BASE_PATH_CONFIG = "content.base.path";
 
+    public static $CANONICAL_PROTOCOL_CONFIG = "canonical.protocol";
     public static $CANONICAL_HOST_CONFIG = "canonical.host";
     public static $CANONICAL_PAGE_CONFIG = "canonical.page";
 
@@ -94,6 +95,9 @@ class BEIXFClient implements BEIXFClientInterface {
     // a list of crawler user agents case insensitive regex, so separate by |
     public static $DEFAULT_CRAWLER_USER_AGENTS = "google|bingbot|msnbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|ia_archiver|brightedge";
 
+    public static $CANONICAL_PROTOCOL_HTTP = "http";
+    public static $CANONICAL_PROTOCOL_HTTPS = "https";
+
     public static $TAG_NONE = 0;
     public static $TAG_BODY_OPEN = 1;
     public static $TAG_BLOCK = 2;
@@ -104,7 +108,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.7";
+    public static $CLIENT_VERSION = "1.4.8";
 
     private static $API_VERSION = "1.0.0";
 
@@ -275,6 +279,12 @@ class BEIXFClient implements BEIXFClientInterface {
         // work around for when HTTPS is not set even though it is https
         if (!$is_https && isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) {
             $is_https = true;
+        }
+        // check if canonical host is set as https
+        if (isset($this->config[self::$CANONICAL_PROTOCOL_CONFIG])) {
+            if ($this->config[self::$CANONICAL_PROTOCOL_CONFIG] == self::$CANONICAL_PROTOCOL_HTTPS) {
+                $is_https = true;
+            }
         }
         $this->_original_url = ($is_https ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
         $this->_normalized_url = $this->_original_url;
