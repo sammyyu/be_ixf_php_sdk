@@ -108,7 +108,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.8";
+    public static $CLIENT_VERSION = "1.4.9";
 
     private static $API_VERSION = "1.0.0";
 
@@ -278,6 +278,10 @@ class BEIXFClient implements BEIXFClientInterface {
         $is_https = isset($_SERVER['HTTPS']);
         // work around for when HTTPS is not set even though it is https
         if (!$is_https && isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) {
+            $is_https = true;
+        }
+        // Check external protocol settings to determine the external URL
+        if (!$is_https && isset($_SERVER['X-FORWARDED-PROTO']) && $_SERVER['X-FORWARDED-PROTO'] == 'https') {
             $is_https = true;
         }
         // check if canonical host is set as https

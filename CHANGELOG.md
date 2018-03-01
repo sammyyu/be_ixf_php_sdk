@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.9] - 2018-02-28
+### Added
+- Use X-Forwarded-Proto as additional determination of https
 
 ## [1.4.8] - 2018-02-27
 ### Fixed
