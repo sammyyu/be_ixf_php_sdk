@@ -44,6 +44,7 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $PROXY_LOGIN_CONFIG = "sdk.proxyLogin";
     public static $PROXY_PASSWORD_CONFIG = "sdk.proxyPassword";
     public static $WHITELIST_PARAMETER_LIST_CONFIG = "whitelist.parameter.list";
+    public static $FORCEDIRECTAPI_PARAMETER_LIST_CONFIG = "forcedirectapi.parameter.list";
     public static $FLAT_FILE_FOR_TEST_MODE_CONFIG = "flat.file";
     public static $PAGE_INDEPENDENT_MODE_CONFIG = "page.independent";
     public static $CRAWLER_USER_AGENTS_CONFIG = "crawler.useragents";
@@ -81,6 +82,7 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $ENVIRONMENT_TESTING = "testing";
 
     public static $DEFAULT_CHARSET = "UTF-8";
+    public static $DEFAULT_DIRECT_API_ENDPOINT = "https://api.brightedge.com";
     public static $DEFAULT_API_ENDPOINT = "https://ixf2-api.brightedge.com";
     public static $DEFAULT_ACCOUNT_ID = "0";
     public static $DEFAULT_CONNECT_TIMEOUT = "2000";
@@ -92,6 +94,9 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $DEFAULT_PROXY_PROTOCOL = "http";
     // a list of query string parameters that are kept separated by |
     public static $DEFAULT_WHITELIST_PARAMETER_LIST = "";
+    // a list of query string parameters that are kept separated by |
+    public static $DEFAULT_FORCEDIRECTAPI_PARAMETER_LIST = "ixf-api|ixf";
+
     // a list of crawler user agents case insensitive regex, so separate by |
     public static $DEFAULT_CRAWLER_USER_AGENTS = "google|bingbot|msnbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|ia_archiver|brightedge";
 
@@ -108,7 +113,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.9";
+    public static $CLIENT_VERSION = "1.4.10";
 
     private static $API_VERSION = "1.0.0";
 
@@ -163,6 +168,7 @@ class BEIXFClient implements BEIXFClientInterface {
             self::$CRAWLER_CONNECT_TIMEOUT_CONFIG => self::$DEFAULT_CRAWLER_CONNECT_TIMEOUT,
             self::$CRAWLER_SOCKET_TIMEOUT_CONFIG => self::$DEFAULT_CRAWLER_SOCKET_TIMEOUT,
             self::$WHITELIST_PARAMETER_LIST_CONFIG => self::$DEFAULT_WHITELIST_PARAMETER_LIST,
+            self::$FORCEDIRECTAPI_PARAMETER_LIST_CONFIG => self::$DEFAULT_FORCEDIRECTAPI_PARAMETER_LIST,
             self::$FLAT_FILE_FOR_TEST_MODE_CONFIG => "true",
             self::$PROXY_PORT_CONFIG => self::$DEFAULT_PROXY_PORT,
             self::$PROXY_PROTOCOL_CONFIG => self::$DEFAULT_PROXY_PROTOCOL,
@@ -259,13 +265,6 @@ class BEIXFClient implements BEIXFClientInterface {
             $this->deferRedirect = IXFSDKUtils::getBooleanValue($str_value);
         }
 
-        // make URL request
-        // http://127.0.0.1:8000/api/ixf/1.0/get_capsule/f00000000000123/asdasdsd/
-        $urlBase = $this->config[self::$API_ENDPOINT_CONFIG];
-        if (substr($urlBase, -1) != '/') {
-            $urlBase .= "/";
-        }
-
         $connect_timeout = $this->config[self::$CONNECT_TIMEOUT_CONFIG];
         $socket_timeout = $this->config[self::$SOCKET_TIMEOUT_CONFIG];
         $user_agent = $_SERVER['HTTP_USER_AGENT'];
@@ -302,7 +301,15 @@ class BEIXFClient implements BEIXFClientInterface {
 
         // #2 normalize the URL
         $whitelistParameters = explode("|", $this->config[self::$WHITELIST_PARAMETER_LIST_CONFIG]);
-        $this->_normalized_url = IXFSDKUtils::normalizeURL($this->_normalized_url, $whitelistParameters);
+        $forceDirectApiParameters = explode("|", $this->config[self::$FORCEDIRECTAPI_PARAMETER_LIST_CONFIG]);
+        // force direct and whitelist are automatically whitelisted urls
+        $this->_normalized_url = IXFSDKUtils::normalizeURL($this->_normalized_url, array_merge($whitelistParameters, $forceDirectApiParameters));
+
+        $parameter_in_url = IXFSDKUtils::parametersInURL($this->_normalized_url, $forceDirectApiParameters);
+        if ($parameter_in_url) {
+            $this->config[self::$API_ENDPOINT_CONFIG] = self::$DEFAULT_DIRECT_API_ENDPOINT;
+        }
+
 
         // #3 calculate the page hash
         $page_hash = IXFSDKUtils::getPageHash($this->_normalized_url);
@@ -319,6 +326,14 @@ class BEIXFClient implements BEIXFClientInterface {
         if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
             $get_capsule_api_call_name = "get_global_capsule";
         }
+
+        // make URL request
+        // http://127.0.0.1:8000/api/ixf/1.0/get_capsule/f00000000000123/asdasdsd/
+        $urlBase = $this->config[self::$API_ENDPOINT_CONFIG];
+        if (substr($urlBase, -1) != '/') {
+            $urlBase .= "/";
+        }
+
         $this->_get_capsule_api_url = $urlBase . 'api/ixf/' . self::$API_VERSION . '/' . $get_capsule_api_call_name . '/' . $this->config[self::$ACCOUNT_ID_CONFIG] .
         '/' . $page_hash . '?' . http_build_query($request_params);
         $startTime = round(microtime(true) * 1000);
@@ -461,7 +476,9 @@ class BEIXFClient implements BEIXFClientInterface {
                     $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
                     $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
                     $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
-                    $sb .= "    <li id=\"be_sdkms_capsule_response\">\n// <!--\n" . $this->_capsule_response . "\n-->\n</li>\n";
+                    # chrome complains about <script> in cdata and //
+                    $normalized_response = str_replace("<script>", "&lt;script&gt;", $this->_capsule_response);
+                    $sb .= "    <li id=\"be_sdkms_capsule_response\">\n<![CDATA[\n" . $normalized_response . "\n//]]>\n</li>\n";
                     $sb .= "    <li id=\"be_sdkms_capsule_profile\">\n";
                     foreach ($this->profileHistory as $itemArray) {
                         $itemName = $itemArray[0];
@@ -1099,6 +1116,24 @@ class IXFSDKUtils {
             (isset($url_parts['fragment']) ? "#{$url_parts['fragment']}" : '');
         return $url;
 
+    }
+
+    /**
+     * Check if any of the parameters are in the url
+     */
+    public static function parametersInURL($url, $parameterArray) {
+        $url_parts = parse_url($url);
+        if ($parameterArray == null || count($parameterArray) <= 0 || !isset($url_parts['query'])) {
+            return false;
+        }
+        $query_string_keep = array();
+        $qs_array = self::proper_parse_str($url_parts['query']);
+        foreach ($qs_array as $key => $value) {
+            if (in_array($key, $parameterArray)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static function normalizeURL($url, $whitelistParameters) {

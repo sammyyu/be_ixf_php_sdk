@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.10] - 2018-04-19
+### Added
+- Use CData around capsule payload 
+- New forcedirectapi.parameter.list parameter to force direct api without caching
+
 ## [1.4.9] - 2018-02-28
 ### Added
 - Use X-Forwarded-Proto as additional determination of https

@@ -91,6 +91,34 @@ final class BEIXFClientTest extends TestCase {
         );
     }
 
+    public function testParametersInURL() {
+        $whitelistParameters = array();
+
+        // empty list empty parameter
+        $this->assertFalse(
+            IXFSDKUtils::parametersInURL("http://www.brightedge.com/test/index.jsp", $whitelistParameters)
+        );
+
+        // empty list
+        $this->assertFalse(
+            IXFSDKUtils::parametersInURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
+        );
+
+        $whitelistParameters = array();
+        array_push($whitelistParameters, "k1");
+        $this->assertTrue(
+            IXFSDKUtils::parametersInURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
+        );
+
+        $whitelistParameters = array();
+        array_push($whitelistParameters, "k3");
+        $this->assertFalse(
+            IXFSDKUtils::parametersInURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
+        );
+
+    }
+
+
     public function testNormalizeURL() {
         $whitelistParameters = array();
 
