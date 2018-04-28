@@ -138,10 +138,6 @@ final class BEIXFClientTest extends TestCase {
             IXFSDKUtils::normalizeURL("http://www.brightedge.com:81/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
         );
         $this->assertEquals(
-            "http://www.brightedge.com:81/test/index.jsp",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com:81/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
-        );
-        $this->assertEquals(
             "https://www.brightedge.com/test/index.jsp",
             IXFSDKUtils::normalizeURL("https://www.brightedge.com:443/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
         );
@@ -210,7 +206,7 @@ final class BEIXFClientTest extends TestCase {
             IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&ka=v2.0&kc=v3&ka=v2.1", $whitelistParameters)
         );
         $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp?ka=v2.1&ka=v2.0&kb=v1&kc=v3",
+            "http://www.brightedge.com/test/index.jsp?ka=v2.0&ka=v2.1&kb=v1&kc=v3",
             IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&ka=v2.1&kc=v3&ka=v2.0", $whitelistParameters)
         );
 

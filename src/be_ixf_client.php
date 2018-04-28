@@ -113,7 +113,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.10";
+    public static $CLIENT_VERSION = "1.4.11";
 
     private static $API_VERSION = "1.0.0";
 
@@ -469,11 +469,11 @@ class BEIXFClient implements BEIXFClientInterface {
                     }
                     $sb .= "    </ul>\n";
                 }
+                $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
+                                                        . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
+                $sb .= "    <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
+                $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
                 if ($this->debugMode) {
-                    $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
-                                                            . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
-                    $sb .= "    <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
-                    $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
                     $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
                     $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
                     # chrome complains about <script> in cdata and //
@@ -1165,6 +1165,7 @@ class IXFSDKUtils {
                 $first = true;
                 foreach ($query_string_keep as $key => $value) {
                     if (is_array($value)) {
+                        sort($value);
                         foreach ($value as $value_scalar) {
                             if (!$first) {
                                 $normalized_url .= "&";

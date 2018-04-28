@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.11] - 2018-04-27
+### Fixed
+- normalizing of URL with same key should sort the value
+
 ## [1.4.10] - 2018-04-19
 ### Added
 - Use CData around capsule payload 
