@@ -113,7 +113,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.11";
+    public static $CLIENT_VERSION = "1.4.12";
 
     private static $API_VERSION = "1.0.0";
 
@@ -267,9 +267,14 @@ class BEIXFClient implements BEIXFClientInterface {
 
         $connect_timeout = $this->config[self::$CONNECT_TIMEOUT_CONFIG];
         $socket_timeout = $this->config[self::$SOCKET_TIMEOUT_CONFIG];
-        $user_agent = $_SERVER['HTTP_USER_AGENT'];
+        if (isset($_SERVER['HTTP_USER_AGENT'])) {
+            $this->client_user_agent = $_SERVER['HTTP_USER_AGENT'];
+        } else {
+            $this->client_user_agent = NULL;
+        }
+
         // raise timeout if it is crawler user agent
-        if (IXFSDKUtils::userAgentMatchesRegex($user_agent, $this->config[self::$CRAWLER_USER_AGENTS_CONFIG])) {
+        if ($this->client_user_agent != NULL && IXFSDKUtils::userAgentMatchesRegex($this->client_user_agent, $this->config[self::$CRAWLER_USER_AGENTS_CONFIG])) {
             $connect_timeout = $this->config[self::$CRAWLER_CONNECT_TIMEOUT_CONFIG];
             $socket_timeout = $this->config[self::$CRAWLER_SOCKET_TIMEOUT_CONFIG];
         }
@@ -318,9 +323,10 @@ class BEIXFClient implements BEIXFClientInterface {
             'client_version' => self::$CLIENT_VERSION,
             'base_url' => $this->_normalized_url,
             'orig_url' => $this->_original_url,
-            'user_agent' => $user_agent,
         );
-        $this->client_user_agent = $user_agent;
+        if (isset($this->client_user_agent)) {
+            $request_params['user_agent'] = $this->client_user_agent;
+        }
 
         $get_capsule_api_call_name = "get_capsule";
         if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
@@ -1191,6 +1197,9 @@ class IXFSDKUtils {
     }
 
     public static function userAgentMatchesRegex($user_agent, $user_agent_regex) {
+        if ($user_agent === NULL) {
+            return false;
+        }
         if (preg_match("/" . $user_agent_regex . "/i", $user_agent)) {
             return true;
         }
@@ -1321,9 +1330,9 @@ class RuleEngine {
             $caseInSensitiveMatch = IXFSDKUtils::isBitEnabled($rule['flag'], self::$RULE_FLAG_CASE_INSENSITIVE);
             $output = $original_url;
             $match = false;
-            // If user agent doesn't match, check next rule
-            if (isset($rule['user_agent_regex']) and
-                 ! (IXFSDKUtils::userAgentMatchesRegex($server_user_agent, $rule['user_agent_regex']))) {
+            // If we have user agent as requirement in the rule check to make sure it matches
+            if (isset($rule['user_agent_regex']) &&
+                !(IXFSDKUtils::userAgentMatchesRegex($server_user_agent, $rule['user_agent_regex']))) {
                 continue;
             }
             switch ($ruleType) {

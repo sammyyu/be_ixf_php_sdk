@@ -215,6 +215,16 @@ final class BEIXFClientTest extends TestCase {
     public function testUserAgentMatchesRegex() {
         $userAgentRegex1 = "google|bingbot|msnbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|ia_archiver";
         $userAgentRegex2 = "chrome|google|bingbot|msnbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|ia_archiver";
+
+        // assert null always returns false
+        $this->assertFalse(
+            IXFSDKUtils::userAgentMatchesRegex(NULL, $userAgentRegex1));
+
+        // check empty string
+        $this->assertFalse(
+            IXFSDKUtils::userAgentMatchesRegex("", $userAgentRegex1));
+
+
         $this->assertFalse(
             IXFSDKUtils::userAgentMatchesRegex("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36",
                 $userAgentRegex1));

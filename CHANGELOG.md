@@ -1,13 +1,17 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.12] - 2018-06-19
+### Added
+- Allow missing user agent
+
 ## [1.4.11] - 2018-04-27
 ### Fixed
 - normalizing of URL with same key should sort the value
 
 ## [1.4.10] - 2018-04-19
 ### Added
-- Use CData around capsule payload 
+- Use CData around capsule payload
 - New forcedirectapi.parameter.list parameter to force direct api without caching
 
 ## [1.4.9] - 2018-02-28
