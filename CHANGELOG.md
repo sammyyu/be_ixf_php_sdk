@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.13] - 2018-06-27
+### Added
+- Public accessor to get capsule URL
+
 ## [1.4.12] - 2018-06-19
 ### Added
 - Allow missing user agent

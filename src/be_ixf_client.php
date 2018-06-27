@@ -113,7 +113,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.12";
+    public static $CLIENT_VERSION = "1.4.13";
 
     private static $API_VERSION = "1.0.0";
 
@@ -566,6 +566,13 @@ class BEIXFClient implements BEIXFClientInterface {
             $page_path = str_replace('/', DIRECTORY_SEPARATOR, $page_path);
         }
         return $page_path;
+    }
+
+    /**
+     * Return the capsule API URL
+     */
+    public function getCapsuleAPIURL() {
+        return $this->_get_capsule_api_url;
     }
 
     /**
