@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.14] - 2018-06-29
+### Added
+- Cleaned up more warnings
+
 ## [1.4.13] - 2018-06-27
 ### Added
 - Public accessor to get capsule URL

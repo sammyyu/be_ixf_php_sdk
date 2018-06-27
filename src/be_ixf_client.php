@@ -113,7 +113,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.13";
+    public static $CLIENT_VERSION = "1.4.14";
 
     private static $API_VERSION = "1.0.0";
 
@@ -294,7 +294,7 @@ class BEIXFClient implements BEIXFClientInterface {
                 $is_https = true;
             }
         }
-        $this->_original_url = ($is_https ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+        $this->_original_url = ($is_https ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
         $this->_normalized_url = $this->_original_url;
 
         // #1 one construct the canonical URL
