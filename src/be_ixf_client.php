@@ -102,6 +102,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $CANONICAL_PROTOCOL_HTTP = "http";
     public static $CANONICAL_PROTOCOL_HTTPS = "https";
+    public static $PAGE_HIDE_ORIGINALURL = "page.hide.originalurl";
 
     public static $TAG_NONE = 0;
     public static $TAG_BODY_OPEN = 1;
@@ -113,7 +114,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.14";
+    public static $CLIENT_VERSION = "1.4.15";
 
     private static $API_VERSION = "1.0.0";
 
@@ -136,6 +137,7 @@ class BEIXFClient implements BEIXFClientInterface {
     private $deferRedirect = false;
 
     private $_normalized_url = null;
+    private $_original_url = null;
     private $client_user_agent = null;
 
     /**
@@ -465,76 +467,80 @@ class BEIXFClient implements BEIXFClientInterface {
     protected function generateEndingTags($blockType, $node_type, $publishingEngine,
         $engineVersion, $metaString, $publishedTimeEpochMilliseconds, $elapsedTime, $tagFormat) {
         $sb = "";
-
-            if ($blockType == self::$CLOSE_BLOCKTYPE) {
-                $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
-                if (count($this->errorMessages) > 0) {
-                    $sb .= "    <ul id=\"be_sdkms_capsule_messages\">\n";
-                    foreach ($this->errorMessages as $error_msg) {
-                        $sb .= "    <!-- ixf_msg: " . $error_msg . " -->\n";
-                    }
-                    $sb .= "    </ul>\n";
+        $pageHideOriginalUrl = false;
+        if (isset($this->config[self::$PAGE_HIDE_ORIGINALURL]) && !$this->debugMode) {
+            $pageHideOriginalUrl = IXFSDKUtils::getBooleanValue($this->config[self::$PAGE_HIDE_ORIGINALURL]);
+        }
+        if ($blockType == self::$CLOSE_BLOCKTYPE) {
+            $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
+            if (count($this->errorMessages) > 0) {
+                $sb .= "    <ul id=\"be_sdkms_capsule_messages\">\n";
+                foreach ($this->errorMessages as $error_msg) {
+                    $sb .= "    <!-- ixf_msg: " . $error_msg . " -->\n";
                 }
+                $sb .= "    </ul>\n";
+            }
+            $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
+                                                    . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
+            if (!$pageHideOriginalUrl) {
+                $sb .= "    <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
+            }
+            $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
+            if ($this->debugMode) {
+                $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
+                $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
+                # chrome complains about <script> in cdata and //
+                $normalized_response = str_replace("<script>", "&lt;script&gt;", $this->_capsule_response);
+                $sb .= "    <li id=\"be_sdkms_capsule_response\">\n<![CDATA[\n" . $normalized_response . "\n//]]>\n</li>\n";
+                $sb .= "    <li id=\"be_sdkms_capsule_profile\">\n";
+                foreach ($this->profileHistory as $itemArray) {
+                    $itemName = $itemArray[0];
+                    $itemTime = $itemArray[1];
+                    $sb .= "       <li id=\"" . $itemName . "\" time=\"" . $itemTime . "\" />\n";
+                }
+                $sb .= "    </li>\n";
+            }
+
+            $sb .= "</ul>\n";
+        } else {
+            // capsule information only applies to init block
+            if ($tagFormat == self::$TAG_BODY_OPEN) {
+                $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
                 $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
                                                         . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
-                $sb .= "    <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
-                $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
-                if ($this->debugMode) {
-                    $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
-                    $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
-                    # chrome complains about <script> in cdata and //
-                    $normalized_response = str_replace("<script>", "&lt;script&gt;", $this->_capsule_response);
-                    $sb .= "    <li id=\"be_sdkms_capsule_response\">\n<![CDATA[\n" . $normalized_response . "\n//]]>\n</li>\n";
-                    $sb .= "    <li id=\"be_sdkms_capsule_profile\">\n";
-                    foreach ($this->profileHistory as $itemArray) {
-                        $itemName = $itemArray[0];
-                        $itemTime = $itemArray[1];
-                        $sb .= "       <li id=\"" . $itemName . "\" time=\"" . $itemTime . "\" />\n";
-                    }
-                    $sb .= "    </li>\n";
+                $sb .= "    <li id=\"be_sdkms_capsule_connect_timer\">" . $this->connectTime . " ms</li>\n";
+                $sb .= "    <li id=\"be_sdkms_capsule_index_time\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone(round(microtime(true) * 1000), "i") .
+                    "</li>\n";
+                if ($this->capsule != null) {
+                    $capsulePublisherLine = $this->capsule->getPublishingEngine() . "; ";
+                    $capsulePublisherLine .= $this->capsule->getPublishingEngine() . "_" . $this->capsule->getVersion();
+                    $sb .= "    <li id=\"be_sdkms_capsule_pub\">" . $capsulePublisherLine . "</li>\n";
+                    $sb .= "    <li id=\"be_sdkms_capsule_date_modified\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone($this->capsule->getDatePublished(), "p") .
+                        "</li>\n";
                 }
 
                 $sb .= "</ul>\n";
-            } else {
-                // capsule information only applies to init block
-                if ($tagFormat == self::$TAG_BODY_OPEN) {
-                    $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
-                    $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
-                                                            . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
-                    $sb .= "    <li id=\"be_sdkms_capsule_connect_timer\">" . $this->connectTime . " ms</li>\n";
-                    $sb .= "    <li id=\"be_sdkms_capsule_index_time\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone(round(microtime(true) * 1000), "i") .
-                        "</li>\n";
-                    if ($this->capsule != null) {
-                        $capsulePublisherLine = $this->capsule->getPublishingEngine() . "; ";
-                        $capsulePublisherLine .= $this->capsule->getPublishingEngine() . "_" . $this->capsule->getVersion();
-                        $sb .= "    <li id=\"be_sdkms_capsule_pub\">" . $capsulePublisherLine . "</li>\n";
-                        $sb .= "    <li id=\"be_sdkms_capsule_date_modified\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone($this->capsule->getDatePublished(), "p") .
-                            "</li>\n";
-                    }
-
-                    $sb .= "</ul>\n";
-                }
-                // node information
-                $publisherLine = $publishingEngine . "; ";
-                $publisherLine .= $publishingEngine . "_" . $engineVersion . "; " . $node_type;
-                if ($metaString != null) {
-                    $publisherLine .= "; " . $metaString;
-                }
-                if ($tagFormat === self::$TAG_COMMENT) {
-                    $sb .= "<!--\n";
-                    $sb .= "   be_sdkms_pub: " . $publisherLine . ";\n";
-                    $sb .= "   be_sdkms_date_modified: " . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . ";\n";
-                    $sb .= "   be_sdkms_timer: " . $elapsedTime . " ms;\n";
-                    $sb .= "-->\n";
-                } else if ($tagFormat === self::$TAG_BLOCK || $tagFormat == self::$TAG_BODY_OPEN) {
-                    $sb .= "<ul id=\"be_sdkms_node\" style=\"display:none!important\">\n";
-                    $sb .= "   <li id=\"be_sdkms_pub\">" . $publisherLine . "</li>\n";
-                    $sb .= "   <li id=\"be_sdkms_date_modified\">" . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . "</li>\n";
-                    $sb .= "   <li id=\"be_sdkms_timer\">" . $elapsedTime . " ms</li>\n";
-                    $sb .= "</ul>\n";
-                }
             }
-
+            // node information
+            $publisherLine = $publishingEngine . "; ";
+            $publisherLine .= $publishingEngine . "_" . $engineVersion . "; " . $node_type;
+            if ($metaString != null) {
+                $publisherLine .= "; " . $metaString;
+            }
+            if ($tagFormat === self::$TAG_COMMENT) {
+                $sb .= "<!--\n";
+                $sb .= "   be_sdkms_pub: " . $publisherLine . ";\n";
+                $sb .= "   be_sdkms_date_modified: " . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . ";\n";
+                $sb .= "   be_sdkms_timer: " . $elapsedTime . " ms;\n";
+                $sb .= "-->\n";
+            } else if ($tagFormat === self::$TAG_BLOCK || $tagFormat == self::$TAG_BODY_OPEN) {
+                $sb .= "<ul id=\"be_sdkms_node\" style=\"display:none!important\">\n";
+                $sb .= "   <li id=\"be_sdkms_pub\">" . $publisherLine . "</li>\n";
+                $sb .= "   <li id=\"be_sdkms_date_modified\">" . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . "</li>\n";
+                $sb .= "   <li id=\"be_sdkms_timer\">" . $elapsedTime . " ms</li>\n";
+                $sb .= "</ul>\n";
+            }
+        }
         return $sb;
     }
 

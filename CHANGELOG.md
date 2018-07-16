@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.15] - 2018-07-16
+### Added
+- PAGE_HIDE_ORIGINALURL config key
+- Fixed redirects not working bug
+
 ## [1.4.14] - 2018-06-29
 ### Added
 - Cleaned up more warnings
