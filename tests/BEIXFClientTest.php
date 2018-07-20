@@ -9,7 +9,7 @@ use BrightEdge\RuleEngine;
 use function BrightEdge\buildCapsuleWrapper;
 
 /**
-c:\wamp64\bin\php\php7.0.10\php.exe c:\php56\phpunit.phar --bootstrap be_ixf_client.php tests\BEIXFClientTest.php
+C:\wamp64\bin\php\php7.0.23\php.exe c:\php-56\phpunit.phar --bootstrap be_ixf_client.php tests\BEIXFClientTest.php
  */
 
 /**
@@ -118,98 +118,75 @@ final class BEIXFClientTest extends TestCase {
 
     }
 
-
     public function testNormalizeURL() {
         $whitelistParameters = array();
-
         // make sure we remove all query string by default
-        $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
-        );
-
+        $this->assertEquals("http://www.brightedge.com/test/index.jsp",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters));
         // make sure we remove extraneous port info
-        $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com:80/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
-        );
-        $this->assertEquals(
-            "http://www.brightedge.com:81/test/index.jsp",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com:81/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
-        );
-        $this->assertEquals(
-            "https://www.brightedge.com/test/index.jsp",
-            IXFSDKUtils::normalizeURL("https://www.brightedge.com:443/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
-        );
-        $this->assertEquals(
-            "https://www.brightedge.com:444/test/index.jsp",
-            IXFSDKUtils::normalizeURL("https://www.brightedge.com:444/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
-        );
-
+        $this->assertEquals("http://www.brightedge.com/test/index.jsp",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com:80/test/index.jsp?k1=v1&k2=v2", $whitelistParameters));
+        $this->assertEquals("http://www.brightedge.com:81/test/index.jsp",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com:81/test/index.jsp?k1=v1&k2=v2", $whitelistParameters));
+        $this->assertEquals("https://www.brightedge.com/test/index.jsp",
+            IXFSDKUtils::normalizeURL("https://www.brightedge.com:443/test/index.jsp?k1=v1&k2=v2", $whitelistParameters));
+        $this->assertEquals("https://www.brightedge.com:444/test/index.jsp",
+            IXFSDKUtils::normalizeURL("https://www.brightedge.com:444/test/index.jsp?k1=v1&k2=v2", $whitelistParameters));
         // make sure whitelist parameter works
         $whitelistParameters = array();
         array_push($whitelistParameters, "k1");
-        $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp?k1=v1",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
-        );
-
+        $this->assertEquals("http://www.brightedge.com/test/index.jsp?k1=v1",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters));
         $whitelistParameters = array();
         array_push($whitelistParameters, "k1");
         array_push($whitelistParameters, "k2");
-        $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
-        );
-
+        $this->assertEquals("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters));
         $whitelistParameters = array();
         array_push($whitelistParameters, "k2");
-        $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp?k2=v2",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters)
-        );
-
+        $this->assertEquals("http://www.brightedge.com/test/index.jsp?k2=v2",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k2=v2", $whitelistParameters));
         // single key multiple value
         $whitelistParameters = array();
         array_push($whitelistParameters, "k1");
-        $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp?k1=v1&k1=v2",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k1=v2", $whitelistParameters)
-        );
-
+        $this->assertEquals("http://www.brightedge.com/test/index.jsp?k1=v1&k1=v2",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=v1&k1=v2", $whitelistParameters));
         // make sure we keep the encoding value
         $whitelistParameters = array();
         array_push($whitelistParameters, "k1");
-        $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp?k1=%25abcdef%3D",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=%25abcdef%3D&k2=v2", $whitelistParameters)
-        );
-
+        $this->assertEquals("http://www.brightedge.com/test/index.jsp?k1=%25abcdef%3D",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?k1=%25abcdef%3D&k2=v2",
+                $whitelistParameters));
         // check sorting in key
         $whitelistParameters = array();
         array_push($whitelistParameters, "ka");
         array_push($whitelistParameters, "kb");
         array_push($whitelistParameters, "kc");
-        $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp?ka=v2&kb=v1&kc=v3",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&kc=v3&ka=v2", $whitelistParameters)
-        );
-
+        $this->assertEquals("http://www.brightedge.com/test/index.jsp?ka=v2&kb=v1&kc=v3",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&kc=v3&ka=v2", $whitelistParameters));
         // check sorting in key with single key multiple values
         // seems like comparator keeps position
         $whitelistParameters = array();
         array_push($whitelistParameters, "ka");
         array_push($whitelistParameters, "kb");
         array_push($whitelistParameters, "kc");
-        $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp?ka=v2.0&ka=v2.1&kb=v1&kc=v3",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&ka=v2.0&kc=v3&ka=v2.1", $whitelistParameters)
-        );
-        $this->assertEquals(
-            "http://www.brightedge.com/test/index.jsp?ka=v2.0&ka=v2.1&kb=v1&kc=v3",
-            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&ka=v2.1&kc=v3&ka=v2.0", $whitelistParameters)
-        );
-
+        $this->assertEquals("http://www.brightedge.com/test/index.jsp?ka=v2.0&ka=v2.1&kb=v1&kc=v3",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&ka=v2.0&kc=v3&ka=v2.1",
+                $whitelistParameters));
+        $this->assertEquals("http://www.brightedge.com/test/index.jsp?ka=v2.0&ka=v2.1&kb=v1&kc=v3",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com/test/index.jsp?kb=v1&ka=v2.1&kc=v3&ka=v2.0",
+                $whitelistParameters));
+        $whitelistParameters = array();
+        array_push($whitelistParameters, "foo");
+        array_push($whitelistParameters, "goo");
+        $this->assertEquals("http://www.brightedge.com?foo=&goo=car",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com?goo=car&foo=&", $whitelistParameters));
+        $this->assertEquals("http://www.brightedge.com?foo=car&goo=",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com?goo=&foo=car", $whitelistParameters));
+        $this->assertEquals("http://www.brightedge.com?goo=&goo=1",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com?goo=1&goo=", $whitelistParameters));
+        $this->assertEquals("http://www.brightedge.com?goo&goo=1",
+            IXFSDKUtils::normalizeURL("http://www.brightedge.com?goo=1&goo", $whitelistParameters));
     }
 
     public function testUserAgentMatchesRegex() {

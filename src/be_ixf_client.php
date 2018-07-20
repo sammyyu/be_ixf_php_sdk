@@ -1073,24 +1073,24 @@ class IXFSDKUtils {
     }
 
     private static function proper_parse_str($str) {
-        # result array
+        // result array
         $arr = array();
-
-        # split on outer delimiter
+        // split on outer delimiter
         $pairs = explode('&', $str);
-
-        # loop through each pair
+        // loop through each pair
         foreach ($pairs as $i) {
-            # split into name and value
-            list($name, $value) = explode('=', $i, 2);
-
-            # if name already exists
-            if (isset($arr[$name])) {
-                # stick multiple values into an array
+            // split into name and value
+            list($name, $value) = array_pad(explode("=", $i), 2, null);
+            # if name already exists in array, handle case &amp&amp=1 should preserve both instances of parameter
+            if (array_key_exists($name, $arr)) {
+                // stick multiple values into an array
                 if (is_array($arr[$name])) {
                     $arr[$name][] = $value;
                 } else {
-                    $arr[$name] = array($arr[$name], $value);
+                    $arr[$name] = array(
+                        $arr[$name],
+                        $value
+                    );
                 }
             }
             # otherwise, simply stick it in a scalar
@@ -1098,8 +1098,7 @@ class IXFSDKUtils {
                 $arr[$name] = $value;
             }
         }
-
-        # return result array
+        // return result array
         return $arr;
     }
 
@@ -1165,7 +1164,9 @@ class IXFSDKUtils {
             }
         }
 //        print_r($url_parts);
-        $normalized_url .= $url_parts['path'];
+        if (isset($url_parts['path'])) {
+            $normalized_url .= $url_parts['path'];
+        }
         if ($whitelistParameters != null && count($whitelistParameters) > 0 && isset($url_parts['query'])) {
             $query_string_keep = array();
             $qs_array = self::proper_parse_str($url_parts['query']);
@@ -1177,8 +1178,6 @@ class IXFSDKUtils {
             }
             // sort the query_string_keep by array key
             ksort($query_string_keep);
-//            print_r($query_string_keep);
-
             if (count($query_string_keep) > 0) {
                 $normalized_url .= "?";
                 $first = true;
@@ -1189,7 +1188,11 @@ class IXFSDKUtils {
                             if (!$first) {
                                 $normalized_url .= "&";
                             }
-                            $normalized_url .= $key . "=" . $value_scalar;
+                            if (isset($value_scalar)) {
+                                $normalized_url .= $key . "=" . $value_scalar;
+                            } else {
+                                $normalized_url .= $key;
+                            }
                             if ($first) {
                                 $first = false;
                             }
@@ -1198,7 +1201,11 @@ class IXFSDKUtils {
                         if (!$first) {
                             $normalized_url .= "&";
                         }
-                        $normalized_url .= $key . "=" . $value;
+                        if (isset($value)) {
+                            $normalized_url .= $key . "=" . $value;
+                        } else {
+                            $normalized_url .= $key;
+                        }
                     }
                     if ($first) {
                         $first = false;
