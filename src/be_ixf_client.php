@@ -103,6 +103,7 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $CANONICAL_PROTOCOL_HTTP = "http";
     public static $CANONICAL_PROTOCOL_HTTPS = "https";
     public static $PAGE_HIDE_ORIGINALURL = "page.hide.originalurl";
+    public static $PAGE_ALIAS_URL = "page.alias.url";
 
     public static $TAG_NONE = 0;
     public static $TAG_BODY_OPEN = 1;
@@ -114,7 +115,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.15";
+    public static $CLIENT_VERSION = "1.4.16";
 
     private static $API_VERSION = "1.0.0";
 
@@ -300,10 +301,14 @@ class BEIXFClient implements BEIXFClientInterface {
         $this->_normalized_url = $this->_original_url;
 
         // #1 one construct the canonical URL
-        if (isset($this->config[self::$CANONICAL_PAGE_CONFIG])) {
+        if (isset($this->config[self::$PAGE_ALIAS_URL])) {
+            $this->_normalized_url = $this->config[self::$PAGE_ALIAS_URL];
+            $this->_original_url = $this->_normalized_url;
+        } else if (isset($this->config[self::$CANONICAL_PAGE_CONFIG])) {
             $this->_normalized_url = $this->config[self::$CANONICAL_PAGE_CONFIG];
-        } else if (isset($this->config[self::$CANONICAL_HOST_CONFIG])) {
-            $this->_normalized_url = IXFSDKUtils::overrideHostInURL($this->_normalized_url, $this->config[self::$CANONICAL_HOST_CONFIG]);
+        }
+        if (isset($this->config[self::$CANONICAL_HOST_CONFIG]) || isset($this->config[self::$CANONICAL_PROTOCOL_CONFIG])) {
+            $this->_normalized_url = IXFSDKUtils::overrideHostOrProtocolInURL($this->_normalized_url, $this->config[self::$CANONICAL_HOST_CONFIG], $this->config[self::$CANONICAL_PROTOCOL_CONFIG]);
         }
 
         // #2 normalize the URL
@@ -474,13 +479,13 @@ class BEIXFClient implements BEIXFClientInterface {
         if ($blockType == self::$CLOSE_BLOCKTYPE) {
             $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
             if (count($this->errorMessages) > 0) {
-                $sb .= "    <ul id=\"be_sdkms_capsule_messages\">\n";
+                $sb .= "    <li id=\"be_sdkms_capsule_messages\">\n";
                 foreach ($this->errorMessages as $error_msg) {
                     $sb .= "    <!-- ixf_msg: " . $error_msg . " -->\n";
                 }
-                $sb .= "    </ul>\n";
+                $sb .= "    </li>\n";
             }
-            $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
+            $sb .= "    <li class=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
                                                     . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
             if (!$pageHideOriginalUrl) {
                 $sb .= "    <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
@@ -505,8 +510,8 @@ class BEIXFClient implements BEIXFClientInterface {
         } else {
             // capsule information only applies to init block
             if ($tagFormat == self::$TAG_BODY_OPEN) {
-                $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
-                $sb .= "    <li id=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
+                $sb .= "\n<ul id=\"be_sdkms_capsule_open\" style=\"display:none!important\">\n";
+                $sb .= "    <li class=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
                                                         . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
                 $sb .= "    <li id=\"be_sdkms_capsule_connect_timer\">" . $this->connectTime . " ms</li>\n";
                 $sb .= "    <li id=\"be_sdkms_capsule_index_time\">" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone(round(microtime(true) * 1000), "i") .
@@ -534,10 +539,10 @@ class BEIXFClient implements BEIXFClientInterface {
                 $sb .= "   be_sdkms_timer: " . $elapsedTime . " ms;\n";
                 $sb .= "-->\n";
             } else if ($tagFormat === self::$TAG_BLOCK || $tagFormat == self::$TAG_BODY_OPEN) {
-                $sb .= "<ul id=\"be_sdkms_node\" style=\"display:none!important\">\n";
-                $sb .= "   <li id=\"be_sdkms_pub\">" . $publisherLine . "</li>\n";
-                $sb .= "   <li id=\"be_sdkms_date_modified\">" . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . "</li>\n";
-                $sb .= "   <li id=\"be_sdkms_timer\">" . $elapsedTime . " ms</li>\n";
+                $sb .= "<ul class=\"be_sdkms_node\" style=\"display:none!important\">\n";
+                $sb .= "   <li class=\"be_sdkms_pub\">" . $publisherLine . "</li>\n";
+                $sb .= "   <li class=\"be_sdkms_date_modified\">" . IXFSDKUtils::convertToNormalizedTimeZone($publishedTimeEpochMilliseconds, "pn") . "</li>\n";
+                $sb .= "   <li class=\"be_sdkms_timer\">" . $elapsedTime . " ms</li>\n";
                 $sb .= "</ul>\n";
             }
         }
@@ -1105,22 +1110,30 @@ class IXFSDKUtils {
     /**
      * Replace the host in a URL
      *
-     * @param canonicalHost can be in host or host:port form
+     * @param
+     *  canonicalHost can be in host or host:port form
+     *  @param canonicalProtocol
      */
-    public static function overrideHostInURL($url, $canonicalHost) {
-        $parts = explode(":", $canonicalHost);
-        $canonicalPort = -1;
-        if (count($parts) == 2) {
-            $canonicalHost = $parts[0];
-            $canonicalPort = $parts[1];
-        }
+    public static function overrideHostOrProtocolInURL($url, $canonicalHost, $canonicalProtocol)
+    {
+        $canonicalPort = - 1;
         $url_parts = parse_url($url);
-        $url_parts['host'] = $canonicalHost;
-        if ($canonicalPort > 0) {
-            if (!(($url_parts['scheme'] == 'http' && $canonicalPort == 80) ||
-                ($url_parts['scheme'] == 'https' && $canonicalPort == 443))) {
+        if ($canonicalHost != null) {
+            $parts = explode(":", $canonicalHost);
+            if (count($parts) == 2) {
+                $canonicalHost = $parts[0];
+                $canonicalPort = $parts[1];
+            }
+            $url_parts['host'] = $canonicalHost;
+            if ($canonicalPort > 0) {
                 $url_parts['port'] = $canonicalPort;
             }
+        }
+        if (($url_parts['scheme'] == 'http' && $canonicalPort == 80) || ($url_parts['scheme'] == 'https' && $canonicalPort == 443)) {
+            $url_parts['port'] = null;
+        }
+        if ($canonicalProtocol != null) {
+            $url_parts['scheme'] = $canonicalProtocol;
         }
         $url = (isset($url_parts['scheme']) ? "{$url_parts['scheme']}:" : '') .
             ((isset($url_parts['user']) || isset($url_parts['host'])) ? '//' : '') .
@@ -1133,7 +1146,6 @@ class IXFSDKUtils {
             (isset($url_parts['query']) ? "?{$url_parts['query']}" : '') .
             (isset($url_parts['fragment']) ? "#{$url_parts['fragment']}" : '');
         return $url;
-
     }
 
     /**

@@ -76,18 +76,26 @@ final class BEIXFClientTest extends TestCase {
         );
     }
 
-    public function testOverrideHostInURL() {
+    public function testoverrideHostOrProtocolInURL() {
         $this->assertEquals(
             "http://cnn.com/topnews",
-            IXFSDKUtils::overrideHostInURL("http://www.abc.com/topnews", "cnn.com")
+            IXFSDKUtils::overrideHostOrProtocolInURL("http://www.abc.com/topnews", "cnn.com", null)
         );
         $this->assertEquals(
             "http://cnn.com/topnews",
-            IXFSDKUtils::overrideHostInURL("http://www.abc.com/topnews", "cnn.com:80")
+            IXFSDKUtils::overrideHostOrProtocolInURL("http://www.abc.com/topnews", "cnn.com:80", null)
         );
         $this->assertEquals(
             "http://cnn.com:81/topnews",
-            IXFSDKUtils::overrideHostInURL("http://www.abc.com/topnews", "cnn.com:81")
+            IXFSDKUtils::overrideHostOrProtocolInURL("http://www.abc.com/topnews", "cnn.com:81", null)
+        );
+        $this->assertEquals(
+            "http://cnn.com:81/topnews",
+            IXFSDKUtils::overrideHostOrProtocolInURL("https://www.abcnews.com/topnews", "cnn.com:81", "http")
+        );
+        $this->assertEquals(
+            "https://cnn.com/topnews",
+            IXFSDKUtils::overrideHostOrProtocolInURL("http://cnn.com/topnews", null, "https")
         );
     }
 

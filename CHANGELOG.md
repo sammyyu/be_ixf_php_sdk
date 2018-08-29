@@ -1,6 +1,12 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.16] - 2018-08-29
+### Added
+- PAGE_ALIAS_URL config key : Page_alias property overrides original url
+- Expose CANONICAL_HOST/ CANONICAL_PROTOCOL properties, remove setCanonicalHost function
+- Modify logic to apply protocol override and canonical host override after applying page_alias / canonical url
+
 ## [1.4.15] - 2018-07-16
 ### Added
 - PAGE_HIDE_ORIGINALURL config key
