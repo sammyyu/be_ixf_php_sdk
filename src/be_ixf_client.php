@@ -115,7 +115,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.16";
+    public static $CLIENT_VERSION = "1.4.17";
 
     private static $API_VERSION = "1.0.0";
 
@@ -492,6 +492,7 @@ class BEIXFClient implements BEIXFClientInterface {
             }
             $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
             if ($this->debugMode) {
+                $sb .= "    <li id=\"be_sdkms_page_group\">" . print_r($this->capsule->getPageGroup(), true) . "</li>\n";
                 $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
                 $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
                 # chrome complains about <script> in cdata and //
@@ -735,7 +736,6 @@ function deserializeCapsuleJson($capsule_json) {
         return NULL;
     }
     $capsule = new Capsule();
-    // print_r($capsule_array);
     $capsule->setVersion($capsule_array->capsule_version);
     $capsule->setAccountId($capsule_array->account_id);
     $capsule->setDateCreated((float) $capsule_array->date_created);
@@ -743,6 +743,9 @@ function deserializeCapsuleJson($capsule_json) {
     $capsule->setPublishingEngine($capsule_array->publishing_engine);
     if (isset($capsule_array->config)) {
         $capsule->setconfigList($capsule_array->config);
+    }
+    if (isset($capsule_array->page_group_nodes)) {
+        $capsule->setAllPageGroupNodes($capsule_array->page_group_nodes);
     }
 
     $node_list = array();
@@ -776,20 +779,21 @@ function deserializeCapsuleJson($capsule_json) {
         array_push($node_list, $node);
     }
     $capsule->setCapsuleNodeList($node_list);
-
     return $capsule;
 }
 
 function updateCapsule($capsule, $normalizedURL, $userAgent) {
     try {
         $configList = $capsule->getConfigList();
+        $auto_redirect_url = $normalizedURL;
+        // if redirect rules are set, add redirect node if auto_redirect_url is different from normalized url
         if ($configList != null && isset($configList->redirect_rules)) {
             $rules_list = $capsule->getConfigList()->redirect_rules;
             $rule_engine = new RuleEngine();
             $rule_engine->setRulesArray($rules_list);
             $auto_redirect_url = $rule_engine->evaluateRules($normalizedURL, $userAgent);
-            if (isset($auto_redirect_url) && $auto_redirect_url != $normalizedURL) {
-                $capsuleNodeList = $capsule->getCapsuleNodeList();
+            $capsuleNodeList = $capsule->getCapsuleNodeList();
+            if ($auto_redirect_url != $normalizedURL) {
                 $auto_redirect = new Node();
                 $auto_redirect->setType(Node::$NODE_TYPE_REDIRECT);
                 $auto_redirect->setRedirectType(301);
@@ -798,7 +802,37 @@ function updateCapsule($capsule, $normalizedURL, $userAgent) {
                 $capsule->setCapsuleNodeList($capsuleNodeList);
             }
         }
-        return $capsule;
+        if ($configList != null && isset($configList->page_groups) && $auto_redirect_url == $normalizedURL) {
+            $page_groups = $configList->page_groups;
+            $pageGroupEngine = new PageGroupEngine();
+            $pageGroupEngine->setPageGroupRules($page_groups);
+            $page_group = $pageGroupEngine->deriveCurrentPageGroup($normalizedURL);
+            $capsule->setPageGroup($page_group);
+            $page_group_nodes = array();
+            if (isset($page_group) && isset($capsule->getAllPageGroupNodes()->$page_group)) {
+                foreach ($capsule->getAllPageGroupNodes()->$page_group as $node_obj) {
+                    $node = new Node();
+                    $node->setType($node_obj->type);
+                    $node->setPublishingEngine($node_obj->publishing_engine);
+                    $node->setEngineVersion($node_obj->engine_version);
+                    if (isset($node_obj->meta_string)) {
+                        $node->setMetaString($node_obj->meta_string);
+                    }
+                    $node->setDateCreated((float) $node_obj->date_created);
+                    $node->setDatePublished((float) $node_obj->date_published);
+
+                    if (isset($node_obj->content)) {
+                        $node->setContent($node_obj->content);
+                    }
+
+                    if (isset($node_obj->feature_group)) {
+                        $node->setFeatureGroup($node_obj->feature_group);
+                    }
+                    array_push($page_group_nodes, $node);
+                }
+                $capsule->setPageGroupNodes($page_group_nodes);
+            }
+        }
     } finally {
         return $capsule;
     }
@@ -915,9 +949,15 @@ class Capsule {
     protected $version;
     protected $capsuleNodeList;
     protected $configList;
+    protected $pageGroupNodes;
+    protected $allPageGroupNodes;
+    protected $pageGroup;
 
     public function __construct() {
         $this->capsuleNodeList = null;
+        $this->pageGroupNodes = null;
+        $this->allPageGroupNodes = null;
+        $this->pageGroup = null;
     }
 
     public function getConfigList() {
@@ -940,6 +980,11 @@ class Capsule {
         return null;
     }
 
+    public function getAllPageGroupNodes() {
+        $allPageGroupNodesArray = $this->allPageGroupNodes;
+        return $allPageGroupNodesArray;
+    }
+
     public function getRedirectNode() {
         if ($this->capsuleNodeList == null) {
             return null;
@@ -953,16 +998,28 @@ class Capsule {
     }
 
     public function getNode($node_type, $feature_group) {
-        if ($this->capsuleNodeList == null) {
-            return null;
-        }
-        foreach ($this->capsuleNodeList as $node) {
+        $return_node = null;
+        $capsuleNodeList = null;
+        $capsuleNodeList = $this->capsuleNodeList;
+
+        foreach ($capsuleNodeList as $node) {
 //            echo "getting node type=" . $node->getType() . " fg= " . $node->getFeatureGroup() . "<br>\n";
             if ($node->getType() == $node_type && $node->getFeatureGroup() == $feature_group) {
-                return $node;
+                $return_node = $node;
             }
         }
-        return null;
+        // if pageGroupNodes is set override the feature group with the page group specific nodes, in case
+        // feature group occurs in the node list common to all page groups (eg. _head_open) return the common version.
+        if (isset($this->pageGroupNodes)) {
+            $capsuleNodeList = $this->pageGroupNodes;
+            foreach ($capsuleNodeList as $node) {
+                if ($node->getType() == $node_type && $node->getFeatureGroup() == $feature_group) {
+                    $return_node = $node;
+                }
+            }
+        }
+
+        return $return_node;
     }
 
     public function getCapsuleNodeList() {
@@ -1009,12 +1066,28 @@ class Capsule {
         return $this->datePublished;
     }
 
+    public function getPageGroup() {
+        return $this->pageGroup;
+    }
+
     public function setDatePublished($datePublished) {
         $this->datePublished = $datePublished;
     }
 
     public function setConfigList($configList) {
         $this->configList = $configList;
+    }
+
+    public function setPageGroupNodes($pageGroupNodes) {
+        $this->pageGroupNodes = $pageGroupNodes;
+    }
+
+    public function setAllPageGroupNodes($allPageGroupNodes) {
+        $this->allPageGroupNodes = $allPageGroupNodes;
+    }
+
+    public function setPageGroup($pageGroup) {
+        $this->pageGroup = $pageGroup;
     }
 }
 
@@ -1114,8 +1187,7 @@ class IXFSDKUtils {
      *  canonicalHost can be in host or host:port form
      *  @param canonicalProtocol
      */
-    public static function overrideHostOrProtocolInURL($url, $canonicalHost, $canonicalProtocol)
-    {
+    public static function overrideHostOrProtocolInURL($url, $canonicalHost, $canonicalProtocol){
         $canonicalPort = - 1;
         $url_parts = parse_url($url);
         if ($canonicalHost != null) {
@@ -1136,15 +1208,15 @@ class IXFSDKUtils {
             $url_parts['scheme'] = $canonicalProtocol;
         }
         $url = (isset($url_parts['scheme']) ? "{$url_parts['scheme']}:" : '') .
-            ((isset($url_parts['user']) || isset($url_parts['host'])) ? '//' : '') .
-            (isset($url_parts['user']) ? "{$url_parts['user']}" : '') .
-            (isset($url_parts['pass']) ? ":{$url_parts['pass']}" : '') .
-            (isset($url_parts['user']) ? '@' : '') .
-            (isset($url_parts['host']) ? "{$url_parts['host']}" : '') .
-            (isset($url_parts['port']) ? ":{$url_parts['port']}" : '') .
-            (isset($url_parts['path']) ? "{$url_parts['path']}" : '') .
-            (isset($url_parts['query']) ? "?{$url_parts['query']}" : '') .
-            (isset($url_parts['fragment']) ? "#{$url_parts['fragment']}" : '');
+        ((isset($url_parts['user']) || isset($url_parts['host'])) ? '//' : '') .
+        (isset($url_parts['user']) ? "{$url_parts['user']}" : '') .
+        (isset($url_parts['pass']) ? ":{$url_parts['pass']}" : '') .
+        (isset($url_parts['user']) ? '@' : '') .
+        (isset($url_parts['host']) ? "{$url_parts['host']}" : '') .
+        (isset($url_parts['port']) ? ":{$url_parts['port']}" : '') .
+        (isset($url_parts['path']) ? "{$url_parts['path']}" : '') .
+        (isset($url_parts['query']) ? "?{$url_parts['query']}" : '') .
+        (isset($url_parts['fragment']) ? "#{$url_parts['fragment']}" : '');
         return $url;
     }
 
@@ -1423,5 +1495,40 @@ class RuleEngine {
             }
         }
         return $original_url;
+    }
+}
+
+class PageGroupEngine {
+
+    protected $pageGroupRules;
+
+    public function __construct() {}
+
+    public function setPageGroupRules($pageGroupRules) {
+        $this->pageGroupRules = json_decode(json_encode($pageGroupRules), true);
+    }
+
+    public function getPageGroupsRules() {
+        return $this->pageGroupRules;
+    }
+
+    public function deriveCurrentPageGroup($normalizedUrl) {
+        $pageGroups = $this->pageGroupRules;
+        $output = null;
+        foreach ($pageGroups as $pageGroup) {
+            $match = false;
+            // include rule has entries iterate through the rules to find if any of the regex patterns matches
+            if (isset($pageGroup['include_rules'])) {
+                foreach ($pageGroup['include_rules'] as $regex) {
+                    $patternString = "/" . $regex . "/i";
+                    $match = preg_match($patternString, $normalizedUrl) == 1;
+                    if ($match == true) {
+                        $output = $pageGroup['name'];
+                        return $output;
+                    }
+                }
+            }
+        }
+        return $output;
     }
 }

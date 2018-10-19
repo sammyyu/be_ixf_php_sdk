@@ -15,7 +15,118 @@ C:\wamp64\bin\php\php7.0.23\php.exe c:\php-56\phpunit.phar --bootstrap be_ixf_cl
 /**
  * @covers BEIXFClient
  */
+
+
 final class BEIXFClientTest extends TestCase {
+
+    public static $capsuleJson = '{
+  "account_id": "f00000000000123",
+  "key": "http://mycompany.com/test/index.php?a=foo&b=bar",
+  "date_created": 1501608650554,
+  "date_published": 1501608670554,
+  "publishing_engine": "capsulemaker",
+  "engine_version": "1.0.0.0",
+  "capsule_version": "1.0.0",
+  "nodes": [
+    {
+      "type": "headstr",
+      "date_created": 1501608650554,
+      "date_published": 1501608670554,
+      "publishing_engine": "pixel",
+      "engine_version": "1.0.0.0",
+      "meta_string": "consolidated_12",
+      "content": "General _head_open",
+      "feature_group": "_head_open"
+    },
+    {
+      "type": "bodystr",
+      "date_created": 1501608650554,
+      "date_published": 1501608670554,
+      "publishing_engine": "linkmaker",
+      "engine_version": "1.0.0.0",
+      "content": "General body open",
+      "feature_group": "_body_open"
+    }
+  ],
+  "page_group_nodes": {
+    "page_group1": [
+      {
+        "type": "bodystr",
+        "feature_group": "_body_open",
+        "date_created": 1504117307000,
+        "date_published": 1504117349000,
+        "publishing_engine": "SDK_internal",
+        "engine_version": "1.0.0.1",
+        "content": "Page group _body_open"
+      },
+      {
+        "type": "bodystr",
+        "feature_group": "body_1",
+        "date_created": 1504117307000,
+        "date_published": 1504117349000,
+        "publishing_engine": "SDK_internal",
+        "engine_version": "1.0.0.1",
+        "content": "Page group body_1"
+      }
+    ]
+  },
+  "config": {
+    "redirect_rules": [
+        {
+            "name": "force secure",
+            "type": "regex",
+            "source_regex": "^(HTTP:\\\/\\\/)(.*)",
+            "replacement_regex": "https://$2",
+            "user_agent_regex": "bingbot",
+            "flag": 2
+        },
+        {
+            "name": "replace_space_in_path",
+            "type": "regex_path",
+            "source_regex" : "%20",
+            "replacement_regex": "-",
+            "flag": 0
+        },
+        {
+            "name": "upper_case_parameter",
+            "type": "case_parameter",
+            "case": 1,
+            "flag": 1
+        },
+        {
+            "name": "upper_case_path",
+            "type": "case_path",
+            "case": 1,
+            "flag": 0
+        }
+    ],
+    "page_groups": [
+      {
+        "name": "page_group2",
+        "include_rules": [
+          "\\\/blog.*",
+          "\\\/content.*",
+          "\\\/localhosv.*"
+        ],
+        "priority": 1
+      },
+      {
+        "name": "page_group1",
+        "include_rules": [
+          "\\\/googletest.*"
+        ],
+        "priority": 2
+      },
+      {
+        "name": "page_group3",
+        "include_rules": [
+          "http:\\\/\\\/www.brightege.com\\\/.*"
+        ],
+        "priority": 3
+      }
+    ]
+  }
+}';
 
     public function testIsBitEnabled() {
         $this->assertFalse(IXFSDKUtils::isBitEnabled(0, 0));
@@ -369,67 +480,10 @@ final class BEIXFClientTest extends TestCase {
     }
 
     public function testbuildCapsuleWrapper() {
-        $capsuleJson = '{
-    "account_id": "f00000000000123",
-    "key": "http://mycompany.com/test/index.php?a=foo&b=bar",
-    "date_created": 1501608650554,
-    "date_published": 1501608670554,
-    "publishing_engine": "capsulemaker",
-    "engine_version": "1.0.0.0",
-    "capsule_version": "1.0.0",
-    "config": { "redirect_rules":
-        [
-        {
-            "name": "force secure",
-            "type": "regex",
-            "source_regex": "^(HTTP:\\\/\\\/)(.*)",
-            "replacement_regex": "https://$2",
-            "user_agent_regex": "bingbot",
-            "flag": 2
-        },
-        {
-            "name": "replace_space_in_path",
-            "type": "regex_path",
-            "source_regex" : "%20",
-            "replacement_regex": "-",
-            "flag": 0
-        },
-        {
-            "name": "upper_case_parameter",
-            "type": "case_parameter",
-            "case": 1,
-            "flag": 1
-        },
-        {
-            "name": "upper_case_path",
-            "type": "case_path",
-            "case": 1,
-            "flag": 0
-        }
-        ]
-    },
-    "nodes": [
-        {
-            "type": "initstr",
-            "date_created": 1501608650554,
-            "date_published": 1501608670554,
-            "publishing_engine": "canoncleaner",
-            "engine_version": "1.0.0.0",
-            "meta_string": "consolidated_12",
-            "content": "<meta charset=\"utf-8\" /><meta name=\"description\" content=\"Example Meta description\" /><title>IX Foundation Sample Title Local Capsule</title>"
-        },
-        {
-            "type": "bodystr",
-            "feature_type": "be_sdkms_linkblock",
-            "date_created": 1501608650554,
-            "date_published": 1501608670554,
-            "publishing_engine": "linkmaker",
-            "engine_version": "1.0.0.0",
-            "content": "<p id=\"one\">This is from test env JSON capsule</p><p id=\"two\">This is an example link block</p>"
-        }
-    ]
-}';
-        $jsonObject = json_encode(json_decode($capsuleJson));
+        $obj = json_decode(self::$capsuleJson);
+        unset($obj->config->page_groups);
+        unset($obj->page_group_nodes);
+        $jsonObject = json_encode($obj);
         $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "bingbot");
         $node = $capsule->getRedirectNode();
         $redirect_url = $node->getRedirectURL();
@@ -442,42 +496,33 @@ final class BEIXFClientTest extends TestCase {
     }
 
     public function testbuildCapsuleWrapperEmptyConfig() {
-        $capsuleJson = '{
-    "account_id": "f00000000000123",
-    "key": "http://mycompany.com/test/index.php?a=foo&b=bar",
-    "date_created": 1501608650554,
-    "date_published": 1501608670554,
-    "publishing_engine": "capsulemaker",
-    "engine_version": "1.0.0.0",
-    "capsule_version": "1.0.0",
-    "config": {"redirect_rules":
-        [
-        ]
-        },
-    "nodes": [
-        {
-            "type": "initstr",
-            "date_created": 1501608650554,
-            "date_published": 1501608670554,
-            "publishing_engine": "canoncleaner",
-            "engine_version": "1.0.0.0",
-            "meta_string": "consolidated_12",
-            "content": "<meta charset=\"utf-8\" /><meta name=\"description\" content=\"Example Meta description\" /><title>IX Foundation Sample Title Local Capsule</title>"
-        },
-        {
-            "type": "bodystr",
-            "feature_type": "be_sdkms_linkblock",
-            "date_created": 1501608650554,
-            "date_published": 1501608670554,
-            "publishing_engine": "linkmaker",
-            "engine_version": "1.0.0.0",
-            "content": "<p id=\"one\">This is from test env JSON capsule</p><p id=\"two\">This is an example link block</p>"
-        }
-    ]
-}';
-        $jsonObject = json_encode(json_decode($capsuleJson));
+        $obj = json_decode(self::$capsuleJson);
+        $obj->config = array();
+        unset($obj->page_group_nodes);
+        $jsonObject = json_encode($obj);
         $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "bingbot");
         $this->assertEquals($capsule->getRedirectNode(), NULL);
+    }
+
+    public function testbuildCapsuleWrapperPageGroups() {
+        $obj = json_decode(self::$capsuleJson);
+        $obj->config->redirect_rules = array_slice($obj->config->redirect_rules,0,1);
+        $jsonObject = json_encode($obj);
+        $capsule = buildCapsuleWrapper($jsonObject, "https://googletest/local%20a/?local=1", "bingbot");
+        $body_open_str = $capsule->getNode('bodystr', '_body_open')->getContent();
+        $head_open_str = $capsule->getNode('headstr', '_head_open')->getContent();
+        $this->assertEquals($body_open_str, 'Page group _body_open');
+        $this->assertEquals($head_open_str, 'General _head_open');
+        $redirect_node = $capsule->getRedirectNode();
+        $this->assertEquals($redirect_node, NULL);
+    }
+
+    public function testbuildCapsuleWrapperRedirectWithPageGroups() {
+        $jsonObject = json_encode(json_decode(self::$capsuleJson));
+        $capsule = buildCapsuleWrapper($jsonObject, "https://googletest/local%20a/?local=1", "bingbot");
+        $node = $capsule->getRedirectNode();
+        $redirect_url = $node->getRedirectURL();
+        $this->assertEquals("https://googletest/local-a/?LOCAL=1", $redirect_url);
     }
 }
 ?>

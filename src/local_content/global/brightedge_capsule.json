@@ -1,140 +1,218 @@
 {
-    "account_id": "global",
-    "key": "http://mycompany.com/test/index.jsp?a=foo&b=bar",
-    "date_created": 1504117307000,
-    "date_published": 1504117349000,
-    "publishing_engine": "SDK_internal",
-    "engine_version": "1.0.0.1",
-    "capsule_version": "1.0.0.3",
-    "nodes": [
-        {
-            "type": "headstr",
-            "feature_group": "_head_open",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "meta_string": "consolidated_12",
-            "content": "<script>var d='headstr open from BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE.'</script>"
-        },
-        {
-            "type": "headstr",
-            "feature_group": "flexblock_1",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "meta_string": "consolidated_12",
-            "content": "Title from BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE."
-        },
-        {
-            "type": "headstr",
-            "feature_group": "flexblock_2",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "meta_string": "consolidated_12",
-            "content": "meta description from BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE."
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "_body_open",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "<ul><li>BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: body_open. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API.</li></ul>"
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "flexblock_1",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_1. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "flexblock_2",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_2. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "flexblock_3",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_3. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "flexblock_4",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_4. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "flexblock_5",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_5. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "flexblock_6",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_6. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "flexblock_7",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_7. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "flexblock_8",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_8. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "flexblock_9",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_9. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
-        },
-        {
-            "type": "bodystr",
-            "feature_group": "flexblock_10",
-            "date_created": 1504117307000,
-            "date_published": 1504117349000,
-            "publishing_engine": "SDK_internal",
-            "engine_version": "1.0.0.1",
-            "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_10. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
-        }
+  "account_id": "global",
+  "key": "http://mycompany.com/test/index.jsp?a=foo&b=bar",
+  "date_created": 1504117307000,
+  "date_published": 1504117349000,
+  "publishing_engine": "SDK_internal",
+  "engine_version": "1.0.0.1",
+  "capsule_version": "1.0.0.3",
+  "nodes": [
+    {
+      "type": "headstr",
+      "feature_group": "_head_open",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "meta_string": "consolidated_12",
+      "content": "<script>var d='headstr open from BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE.'</script>"
+    },
+    {
+      "type": "headstr",
+      "feature_group": "flexblock_1",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "meta_string": "consolidated_12",
+      "content": "Title from BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE."
+    },
+    {
+      "type": "headstr",
+      "feature_group": "flexblock_2",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "meta_string": "consolidated_12",
+      "content": "meta description from BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE."
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "_body_open",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "<ul><li>BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: body_open. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API.</li></ul>"
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "flexblock_1",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_1. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "flexblock_2",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_2. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "flexblock_3",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_3. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "flexblock_4",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_4. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "flexblock_5",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_5. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "flexblock_6",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_6. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "flexblock_7",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_7. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "flexblock_8",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_8. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "flexblock_9",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_9. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
+    },
+    {
+      "type": "bodystr",
+      "feature_group": "flexblock_10",
+      "date_created": 1504117307000,
+      "date_published": 1504117349000,
+      "publishing_engine": "SDK_internal",
+      "engine_version": "1.0.0.1",
+      "content": "BE_SDK, LOCAL_GLOBAL_CAPSULE_MODE: flexblock_10. The page successfully retrieved content from the local test capsule. This mode does not attempt to use the API."
+    }
+  ],
+  "page_group_nodes": {
+    "page_group1": [
+      {
+        "type": "bodystr",
+        "feature_group": "flexblock_3",
+        "date_created": 1504117307000,
+        "date_published": 1504117349000,
+        "publishing_engine": "SDK_internal",
+        "engine_version": "1.0.0.1",
+        "content": "Page Group1 flexblock_4. flexblock_3"
+      },
+      {
+        "type": "bodystr",
+        "feature_group": "flexblock_4",
+        "date_created": 1504117307000,
+        "date_published": 1504117349000,
+        "publishing_engine": "SDK_internal",
+        "engine_version": "1.0.0.1",
+        "content": "Page Group1 flexblock_4."
+      }
     ]
+  },
+  "config": {
+    "redirect_rules": [
+      {
+        "flag": 1,
+        "replacement_regex": "http://$2",
+        "type": "regex",
+        "name": "force_secure",
+        "source_regex": "^(http:\\/\\/)(.*)"
+      },
+      {
+        "case": 0,
+        "flag": 0,
+        "type": "case_path",
+        "name": "lower_case_path"
+      },
+      {
+        "flag": 0,
+        "replacement_regex": "$1://www.$2",
+        "type": "regex",
+        "name": "force_www",
+        "source_regex": "^(https?):\\/\\/((?!www).*)"
+      },
+      {
+        "flag": 0,
+        "replacement_regex": "-",
+        "type": "regex_path",
+        "name": "remove_space_in_path",
+        "source_regex": "%20"
+      }
+    ],
+    "page_groups": [
+      {
+        "name": "page_group2",
+        "include_rules": [
+          "\\/blog.*",
+          "\\/content.*",
+          "\\/localhosv.*"
+        ],
+        "priority": 1
+      },
+      {
+        "name": "page_group1",
+        "include_rules": [
+          "\\/localhost.*"
+        ],
+        "priority": 2
+      },
+      {
+        "name": "page_group3",
+        "include_rules": [
+          "http:\\/\\/www.brightege.com\\/.*"
+        ],
+        "priority": 3
+      }
+    ]
+  }
 }
