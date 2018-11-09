@@ -13,11 +13,11 @@ interface BEIXFClientInterface {
 
     public function getHeadOpen();
 
-    public function getBodyOpen();
+    public function getBodyOpen($tagFormat=1);
 
     public function getHeadString($feature_group);
 
-    public function getBodyString($feature_group);
+    public function getBodyString($feature_group, $tagFormat=3);
 
     public function hasHeadString($feature_group);
 
@@ -652,7 +652,9 @@ class BEIXFClient implements BEIXFClientInterface {
                 $publishingEngine = $node->getPublishingEngine();
                 $engineVersion = $node->getPublishingEngine();
                 $metaString = $node->getMetaString();
-                $hasContent = true;
+                if (!empty($sb)) {
+                    $hasContent = true;
+                }
             } else {
                 array_push($this->errorMessages,
                     'CM ' . $node_type . ' node, feature_group ' . $feature_group);
@@ -708,16 +710,16 @@ class BEIXFClient implements BEIXFClientInterface {
         return $this->getFeatureString(Node::$NODE_TYPE_HEADSTR, Node::$FEATURE_GROUP_HEAD_OPEN, self::$TAG_NONE);
     }
 
-    public function getBodyOpen() {
-        return $this->getFeatureString(Node::$NODE_TYPE_BODYSTR, Node::$FEATURE_GROUP_BODY_OPEN, self::$TAG_BODY_OPEN);
+    public function getBodyOpen($tag_format=1) {
+        return $this->getFeatureString(Node::$NODE_TYPE_BODYSTR, Node::$FEATURE_GROUP_BODY_OPEN, $tag_format);
     }
 
     public function getHeadString($feature_group) {
         return $this->getFeatureString(Node::$NODE_TYPE_HEADSTR, $feature_group, self::$TAG_NONE);
     }
 
-    public function getBodyString($feature_group) {
-        return $this->getFeatureString(Node::$NODE_TYPE_BODYSTR, $feature_group, self::$TAG_COMMENT);
+    public function getBodyString($feature_group, $tag_format=3) {
+        return $this->getFeatureString(Node::$NODE_TYPE_BODYSTR, $feature_group, $tag_format);
     }
 
     public function hasHeadString($feature_group) {

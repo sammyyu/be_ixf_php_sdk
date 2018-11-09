@@ -5,6 +5,8 @@
 ### Added
 - Determine page group using normalized url
 - Override nodes with page_group_nodes if page group for the url is not null
+- tagFormat optional parameter to hide default comments with bodystr
+- hasFeatureString method - change definition to return false in case of empty string
 
 ## [1.4.16] - 2018-08-29
 ### Added
