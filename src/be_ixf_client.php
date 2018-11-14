@@ -376,7 +376,7 @@ class BEIXFClient implements BEIXFClientInterface {
                         'capsule file=' . $capsule_resource_file . " doesn't exist.");
                 } else {
                     $this->_capsule_response = file_get_contents($capsule_resource_file);
-                    $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_original_url,
+                    $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_original_url, $this->_normalized_url,
                         $this->client_user_agent);
                     if ($this->capsule == NULL) {
                         array_push($this->errorMessages,
@@ -454,7 +454,7 @@ class BEIXFClient implements BEIXFClientInterface {
                 // successful request parse out capsule
                 $this->_capsule_response = $request['response'];
                 // normalized url
-                $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_original_url, $this->client_user_agent);
+                $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_original_url, $this->_normalized_url, $this->client_user_agent);
                 if ($this->capsule == NULL) {
                     array_push($this->errorMessages,
                         'capsule url=' . $this->_get_capsule_api_url . " is not valid JSON");
@@ -784,7 +784,7 @@ function deserializeCapsuleJson($capsule_json) {
     return $capsule;
 }
 
-function updateCapsule($capsule, $normalizedURL, $userAgent) {
+function updateCapsule($capsule, $originalUrl, $normalizedURL, $userAgent) {
     try {
         $configList = $capsule->getConfigList();
         $auto_redirect_url = $normalizedURL;
@@ -793,9 +793,9 @@ function updateCapsule($capsule, $normalizedURL, $userAgent) {
             $rules_list = $capsule->getConfigList()->redirect_rules;
             $rule_engine = new RuleEngine();
             $rule_engine->setRulesArray($rules_list);
-            $auto_redirect_url = $rule_engine->evaluateRules($normalizedURL, $userAgent);
+            $auto_redirect_url = $rule_engine->evaluateRules($originalUrl, $userAgent);
             $capsuleNodeList = $capsule->getCapsuleNodeList();
-            if ($auto_redirect_url != $normalizedURL) {
+            if ($auto_redirect_url != $originalUrl) {
                 $auto_redirect = new Node();
                 $auto_redirect->setType(Node::$NODE_TYPE_REDIRECT);
                 $auto_redirect->setRedirectType(301);
@@ -804,7 +804,7 @@ function updateCapsule($capsule, $normalizedURL, $userAgent) {
                 $capsule->setCapsuleNodeList($capsuleNodeList);
             }
         }
-        if ($configList != null && isset($configList->page_groups) && $auto_redirect_url == $normalizedURL) {
+        if ($configList != null && isset($configList->page_groups) && $auto_redirect_url == $originalUrl) {
             $page_groups = $configList->page_groups;
             $pageGroupEngine = new PageGroupEngine();
             $pageGroupEngine->setPageGroupRules($page_groups);
@@ -840,14 +840,14 @@ function updateCapsule($capsule, $normalizedURL, $userAgent) {
     }
 }
 
-function buildCapsuleWrapper($capsule_json, $original_url, $userAgent) {
+function buildCapsuleWrapper($capsule_json, $original_url, $normalized_url, $userAgent) {
     $capsule = deserializeCapsuleJson($capsule_json);
     if ($capsule == NULL) {
         return $capsule;
     }
     $redirect_present = $capsule->getRedirectNode();
     if ($redirect_present == null) {
-        $capsule = updateCapsule($capsule, $original_url, $userAgent);
+        $capsule = updateCapsule($capsule, $original_url, $normalized_url, $userAgent);
     }
     return $capsule;
 }

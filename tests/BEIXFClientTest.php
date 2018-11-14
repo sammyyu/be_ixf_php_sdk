@@ -484,14 +484,14 @@ final class BEIXFClientTest extends TestCase {
         unset($obj->config->page_groups);
         unset($obj->page_group_nodes);
         $jsonObject = json_encode($obj);
-        $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "bingbot");
+        $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "http://googletest/local%20a", "bingbot");
         $node = $capsule->getRedirectNode();
         $redirect_url = $node->getRedirectURL();
         $this->assertEquals("https://googletest/local-a/?LOCAL=1", $redirect_url);
 
         // test invalid JSON
         $jsonObject = '{z';
-        $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "bingbot");
+        $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "http://googletest/local%20a", "bingbot");
         $this->assertEquals($capsule, NULL);
     }
 
@@ -500,7 +500,7 @@ final class BEIXFClientTest extends TestCase {
         $obj->config = array();
         unset($obj->page_group_nodes);
         $jsonObject = json_encode($obj);
-        $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "bingbot");
+        $capsule = buildCapsuleWrapper($jsonObject, "http://googletest/local%20a/?local=1", "http://googletest/local%20a", "bingbot");
         $this->assertEquals($capsule->getRedirectNode(), NULL);
     }
 
@@ -508,7 +508,7 @@ final class BEIXFClientTest extends TestCase {
         $obj = json_decode(self::$capsuleJson);
         $obj->config->redirect_rules = array_slice($obj->config->redirect_rules,0,1);
         $jsonObject = json_encode($obj);
-        $capsule = buildCapsuleWrapper($jsonObject, "https://googletest/local%20a/?local=1", "bingbot");
+        $capsule = buildCapsuleWrapper($jsonObject, "https://googletest/local%20a/?local=1", "https://googletest/local%20a", "bingbot");
         $body_open_str = $capsule->getNode('bodystr', '_body_open')->getContent();
         $head_open_str = $capsule->getNode('headstr', '_head_open')->getContent();
         $this->assertEquals($body_open_str, 'Page group _body_open');
@@ -519,7 +519,7 @@ final class BEIXFClientTest extends TestCase {
 
     public function testbuildCapsuleWrapperRedirectWithPageGroups() {
         $jsonObject = json_encode(json_decode(self::$capsuleJson));
-        $capsule = buildCapsuleWrapper($jsonObject, "https://googletest/local%20a/?local=1", "bingbot");
+        $capsule = buildCapsuleWrapper($jsonObject, "https://googletest/local%20a/?local=1", "https://googletest/local%20a", "bingbot");
         $node = $capsule->getRedirectNode();
         $redirect_url = $node->getRedirectURL();
         $this->assertEquals("https://googletest/local-a/?LOCAL=1", $redirect_url);
