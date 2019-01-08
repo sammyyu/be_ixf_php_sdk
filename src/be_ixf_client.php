@@ -83,12 +83,16 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $DEFAULT_CHARSET = "UTF-8";
     public static $DEFAULT_DIRECT_API_ENDPOINT = "https://api.brightedge.com";
-    public static $DEFAULT_API_ENDPOINT = "https://ixf2-api.brightedge.com";
+    public static $DEFAULT_API_ENDPOINT = "http://ixfd-api.bc0a.com";
     public static $DEFAULT_ACCOUNT_ID = "0";
-    public static $DEFAULT_CONNECT_TIMEOUT = "2000";
-    public static $DEFAULT_SOCKET_TIMEOUT = "2000";
-    public static $DEFAULT_CRAWLER_CONNECT_TIMEOUT = "10000";
-    public static $DEFAULT_CRAWLER_SOCKET_TIMEOUT = "10000";
+    /**
+    *** curl connect/socket timeout should be a full second interval
+        http://www.php.net/manual/en/function.curl-setopt.php
+    */
+    public static $DEFAULT_CONNECT_TIMEOUT = "1000";
+    public static $DEFAULT_SOCKET_TIMEOUT = "1000";
+    public static $DEFAULT_CRAWLER_CONNECT_TIMEOUT = "1000";
+    public static $DEFAULT_CRAWLER_SOCKET_TIMEOUT = "1000";
     // means proxy is disabled
     public static $DEFAULT_PROXY_PORT = "0";
     public static $DEFAULT_PROXY_PROTOCOL = "http";
@@ -115,7 +119,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.17";
+    public static $CLIENT_VERSION = "1.4.18";
 
     private static $API_VERSION = "1.0.0";
 
@@ -129,6 +133,7 @@ class BEIXFClient implements BEIXFClientInterface {
     private $capsule = null;
     private $_capsule_response = null;
 
+    private $allowDirectApi = true;
     private $debugMode = false;
     /**
      * This is used when we are debugging the source of the redirect to turn if off
@@ -263,6 +268,11 @@ class BEIXFClient implements BEIXFClientInterface {
             $this->disableRedirect = IXFSDKUtils::getBooleanValue($param_value);
         }
 
+        if (isset($_GET["ixf-endpoint"]) && (preg_match("/bc0a\.com$/", $_GET["ixf-endpoint"]) || preg_match("/brightedge\.com$/", $_GET["ixf-endpoint"]))) {
+            $this->allowDirectApi = false;
+            $this->config[self::$API_ENDPOINT_CONFIG] = $_GET["ixf-endpoint"];
+        }
+
         if (isset($this->config[self::$DEFER_REDIRECT])) {
             $str_value = $this->config[self::$DEFER_REDIRECT];
             $this->deferRedirect = IXFSDKUtils::getBooleanValue($str_value);
@@ -318,7 +328,7 @@ class BEIXFClient implements BEIXFClientInterface {
         $this->_normalized_url = IXFSDKUtils::normalizeURL($this->_normalized_url, array_merge($whitelistParameters, $forceDirectApiParameters));
 
         $parameter_in_url = IXFSDKUtils::parametersInURL($this->_normalized_url, $forceDirectApiParameters);
-        if ($parameter_in_url) {
+        if ($parameter_in_url && $this->allowDirectApi) {
             $this->config[self::$API_ENDPOINT_CONFIG] = self::$DEFAULT_DIRECT_API_ENDPOINT;
         }
 
@@ -492,7 +502,9 @@ class BEIXFClient implements BEIXFClientInterface {
             }
             $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
             if ($this->debugMode) {
-                $sb .= "    <li id=\"be_sdkms_page_group\">" . print_r($this->capsule->getPageGroup(), true) . "</li>\n";
+                if ($this->capsule != null) {
+                    $sb .= "    <li id=\"be_sdkms_page_group\">" . print_r($this->capsule->getPageGroup(), true) . "</li>\n";
+                }
                 $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
                 $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
                 # chrome complains about <script> in cdata and //

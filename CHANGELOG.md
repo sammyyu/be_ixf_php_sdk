@@ -1,6 +1,12 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.18] - 2019-01-08
+### Added
+- Update ixfd endpoint
+- Update default timeouts connect/ socket Timeout to 1000ms and crawlerSocketTimeout to 1000ms
+- add url parameter ixf-endpoint for testing
+
 ## [1.4.17] - 2018-10-18
 ### Added
 - Determine page group using normalized url
@@ -51,7 +57,6 @@
 ## [1.4.7] - 2018-02-23
 ### Fixed
 - Address issue when $_SERVER[HTTP] is missing
-
 ## [1.4.6] - 2018-02-08
 ### Added
 - apply config rules to original url fix
