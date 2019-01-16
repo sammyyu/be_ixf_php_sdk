@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.19] - 2019-01-24
+### Fixed
+- Fixed canonical protocol/ canonical host key not found bug
+
 ## [1.4.18] - 2019-01-08
 ### Added
 - Update ixfd endpoint

@@ -119,7 +119,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.18";
+    public static $CLIENT_VERSION = "1.4.19";
 
     private static $API_VERSION = "1.0.0";
 
@@ -318,7 +318,9 @@ class BEIXFClient implements BEIXFClientInterface {
             $this->_normalized_url = $this->config[self::$CANONICAL_PAGE_CONFIG];
         }
         if (isset($this->config[self::$CANONICAL_HOST_CONFIG]) || isset($this->config[self::$CANONICAL_PROTOCOL_CONFIG])) {
-            $this->_normalized_url = IXFSDKUtils::overrideHostOrProtocolInURL($this->_normalized_url, $this->config[self::$CANONICAL_HOST_CONFIG], $this->config[self::$CANONICAL_PROTOCOL_CONFIG]);
+            $canonicalProtocol = isset($this->config[self::$CANONICAL_PROTOCOL_CONFIG]) ? $this->config[self::$CANONICAL_PROTOCOL_CONFIG] : null;
+            $canonicalHost = isset($this->config[self::$CANONICAL_HOST_CONFIG]) ? $this->config[self::$CANONICAL_HOST_CONFIG] : null;
+            $this->_normalized_url = IXFSDKUtils::overrideHostOrProtocolInURL($this->_normalized_url, $canonicalHost, $canonicalProtocol);
         }
 
         // #2 normalize the URL
