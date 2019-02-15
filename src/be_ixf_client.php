@@ -119,7 +119,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.19";
+    public static $CLIENT_VERSION = "1.4.20";
 
     private static $API_VERSION = "1.0.0";
 
@@ -834,8 +834,12 @@ function updateCapsule($capsule, $originalUrl, $normalizedURL, $userAgent) {
                     if (isset($node_obj->meta_string)) {
                         $node->setMetaString($node_obj->meta_string);
                     }
-                    $node->setDateCreated((float) $node_obj->date_created);
-                    $node->setDatePublished((float) $node_obj->date_published);
+                    if (isset($node_obj->date_created)) {
+                        $node->setDateCreated((float) $node_obj->date_created);
+                    }
+                    if (isset($node_obj->date_published)) {
+                        $node->setDatePublished((float) $node_obj->date_published);
+                    }
 
                     if (isset($node_obj->content)) {
                         $node->setContent($node_obj->content);
@@ -1528,23 +1532,48 @@ class PageGroupEngine {
         return $this->pageGroupRules;
     }
 
-    public function deriveCurrentPageGroup($normalizedUrl) {
-        $pageGroups = $this->pageGroupRules;
-        $output = null;
-        foreach ($pageGroups as $pageGroup) {
-            $match = false;
-            // include rule has entries iterate through the rules to find if any of the regex patterns matches
-            if (isset($pageGroup['include_rules'])) {
-                foreach ($pageGroup['include_rules'] as $regex) {
-                    $patternString = "/" . $regex . "/i";
-                    $match = preg_match($patternString, $normalizedUrl) == 1;
-                    if ($match == true) {
-                        $output = $pageGroup['name'];
-                        return $output;
-                    }
+    public function evaluateIncludeRules(array $pageGroup, $normalizedUrl) {
+        if (isset($pageGroup['include_rules'])) {
+            foreach ($pageGroup['include_rules'] as $regex) {
+                $patternString = "/" . $regex . "/i";
+                $match = preg_match($patternString, $normalizedUrl) == 1;
+                if ($match == true) {
+                    return true;
                 }
             }
         }
-        return $output;
+        return false;
     }
+
+    public function deriveCurrentPageGroup($normalizedUrl) {
+        $pageGroups = $this->pageGroupRules;
+        foreach ($pageGroups as $pageGroup) {
+            $excludeMatch = false;
+            $pageGroupName = $pageGroup['name'];
+            // scan through the exclude rules first
+            if (array_key_exists('exclude_rules', $pageGroup) and isset($pageGroup['exclude_rules'])) {
+                foreach ($pageGroup['exclude_rules'] as $regex) {
+                    $patternString = "/" . $regex . "/i";
+                    $match = preg_match($patternString, $normalizedUrl) == 1;
+                    if ($match == true) {
+                        $excludeMatch = true;
+                        break;
+                    }
+                }
+                if (!$excludeMatch) {
+                    $includeMatch = $this->evaluateIncludeRules($pageGroup, $normalizedUrl);
+                    if ($includeMatch == true) {
+                        return $pageGroupName;
+                    }
+                }
+            } else {
+                $includeMatch = $this->evaluateIncludeRules($pageGroup, $normalizedUrl);
+                //include rule has entries iterate through the rules to find if any of the regex patterns matches
+                if ($includeMatch == true) {
+                   return $pageGroupName;
+               }
+           }
+       }
+       return null;
+   }
 }

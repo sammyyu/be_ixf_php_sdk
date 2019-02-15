@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.20] - 2019-02-20
+### Added
+- Support to have exclude rules at page_group level maitaining backward compatibility
+
 ## [1.4.19] - 2019-01-24
 ### Fixed
 - Fixed canonical protocol/ canonical host key not found bug

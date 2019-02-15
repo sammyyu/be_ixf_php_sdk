@@ -108,12 +108,18 @@ final class BEIXFClientTest extends TestCase {
           "\\\/content.*",
           "\\\/localhosv.*"
         ],
+        "exclude_rules": [
+          "\\\/info.*"
+        ],
         "priority": 1
       },
       {
         "name": "page_group1",
         "include_rules": [
           "\\\/googletest.*"
+        ],
+        "exclude_rules": [
+          "\\\/info.*"
         ],
         "priority": 2
       },
@@ -122,7 +128,20 @@ final class BEIXFClientTest extends TestCase {
         "include_rules": [
           "http:\\\/\\\/www.brightege.com\\\/.*"
         ],
+        "exclude_rules": [
+          "http:\\\/\\\/www.brightege.com\\\/info.*"
+        ],
         "priority": 3
+      },
+      {
+        "name": "Global config",
+        "include_rules": [
+          "\\\/googletest.*"
+        ],
+        "exclude_rules": [
+          "\\\/blog.*"
+        ],
+        "priority": 4
       }
     ]
   }
@@ -507,8 +526,14 @@ final class BEIXFClientTest extends TestCase {
     public function testbuildCapsuleWrapperPageGroups() {
         $obj = json_decode(self::$capsuleJson);
         $obj->config->redirect_rules = array_slice($obj->config->redirect_rules,0,1);
+        //unset exclude rules for each of the page_groups
+        foreach($obj->config->page_groups as $page_group) {
+          unset($page_group->exclude_rules);
+        }
         $jsonObject = json_encode($obj);
         $capsule = buildCapsuleWrapper($jsonObject, "https://googletest/local%20a/?local=1", "https://googletest/local%20a", "bingbot");
+        $pageGroup = $capsule->getPageGroup();
+        $this->assertEquals($pageGroup, 'page_group1');
         $body_open_str = $capsule->getNode('bodystr', '_body_open')->getContent();
         $head_open_str = $capsule->getNode('headstr', '_head_open')->getContent();
         $this->assertEquals($body_open_str, 'Page group _body_open');
@@ -523,6 +548,17 @@ final class BEIXFClientTest extends TestCase {
         $node = $capsule->getRedirectNode();
         $redirect_url = $node->getRedirectURL();
         $this->assertEquals("https://googletest/local-a/?LOCAL=1", $redirect_url);
+    }
+
+    public function testbuildCapsuleWrapperPageGroupsWithExcludes() {
+        $obj = json_decode(self::$capsuleJson);
+        $obj->config->redirect_rules = array_slice($obj->config->redirect_rules,0,1);
+        $jsonObject = json_encode($obj);
+        $capsule = buildCapsuleWrapper($jsonObject, "https://googletest/info", "https://googletest/info", "bingbot");
+        $pageGroup = $capsule->getPageGroup();
+        $this->assertEquals($pageGroup, 'Global config');
+        $redirect_node = $capsule->getRedirectNode();
+        $this->assertEquals($redirect_node, NULL);
     }
 }
 ?>
