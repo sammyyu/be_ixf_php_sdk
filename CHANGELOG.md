@@ -1,6 +1,19 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.21] - 2019-04-15
+### Added
+- Diagnostic type and diagnostic string configurations
+- getHeadOpen method - Update with more meta tags, having more diagnostic information
+- AES encryption added to be:diag meta tag
+- be_ixf comment tag prefixed each time a block is written to the page
+- Google-indexable diagnostic string (sdk_is) is added to the close method
+- Error messages that were previously in the Close string will now be included as 'messages' in be:diag meta tag
+- All diagnostic output from node-specific strings are removed
+- When debug mode is enabled in the url, getBodyOpen will show diagnostic information along with capsule response
+- getCleanString method -  will return the string from the capsule with no extra meta info or comment tag
+
+## [Unreleased]
 ## [1.4.20] - 2019-02-20
 ### Added
 - Support to have exclude rules at page_group level maitaining backward compatibility

@@ -87,6 +87,18 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $DEFAULT_DIRECT_API_ENDPOINT = "https://api.brightedge.com";
     public static $DEFAULT_API_ENDPOINT = "http://ixfd-api.bc0a.com";
     public static $DEFAULT_ACCOUNT_ID = "0";
+
+    public static $DIAGNOSTIC_TYPE = "diagnostic.type";
+    public static $DIAGNOSTIC_STRING = "diagnostic.string";
+    public static $ENCRYPTION_CIPHER = "AES-128-CBC";
+
+    public static $DIAGNOSTIC_TYPE_FULL = "full";
+    public static $DIAGNOSTIC_TYPE_FULL_ENCRYPTED = "full_encrypted";
+    public static $DIAGNOSTIC_TYPE_PARTIAL_ENCRYPTED = "partial_encyrpted";
+    public static $DIAGNOSTIC_STRING_ENABLED = true;
+    public static $DIAGNOSTIC_STRING_DISABLED = false;
+
+
     /**
     *** curl connect/socket timeout should be a full second interval
         http://www.php.net/manual/en/function.curl-setopt.php
@@ -121,7 +133,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.20";
+    public static $CLIENT_VERSION = "1.4.21";
 
     private static $API_VERSION = "1.0.0";
 
@@ -184,6 +196,8 @@ class BEIXFClient implements BEIXFClientInterface {
             self::$PROXY_PROTOCOL_CONFIG => self::$DEFAULT_PROXY_PROTOCOL,
             self::$CRAWLER_USER_AGENTS_CONFIG => self::$DEFAULT_CRAWLER_USER_AGENTS,
             self::$CONTENT_BASE_PATH_CONFIG => __DIR__,
+            self::$DIAGNOSTIC_TYPE => self::$DIAGNOSTIC_TYPE_FULL_ENCRYPTED,
+            self::$DIAGNOSTIC_STRING => self::$DIAGNOSTIC_STRING_ENABLED,
         );
 
         // read from properties file if it exists
@@ -491,14 +505,13 @@ class BEIXFClient implements BEIXFClientInterface {
             $pageHideOriginalUrl = IXFSDKUtils::getBooleanValue($this->config[self::$PAGE_HIDE_ORIGINALURL]);
         }
         if ($blockType == self::$CLOSE_BLOCKTYPE) {
-            $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
-            if (count($this->errorMessages) > 0) {
-                $sb .= "    <li id=\"be_sdkms_capsule_messages\">\n";
-                foreach ($this->errorMessages as $error_msg) {
-                    $sb .= "    <!-- ixf_msg: " . $error_msg . " -->\n";
-                }
-                $sb .= "    </li>\n";
+            $sb .= "\n<!-- be_ixf, sdk, is -->\n";
+            if($this->config[self::$DIAGNOSTIC_TYPE] == self::$DIAGNOSTIC_TYPE_FULL
+                || $this->config[self::$DIAGNOSTIC_TYPE] == self::$DIAGNOSTIC_TYPE_FULL_ENCRYPTED) {
+                $sb .= "\n<span id=\"be:sdk_is\" style=\"display:none!important\">be_ixf;" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZoneWithTimer(round(microtime(true) * 1000), $this->connectTime) . "</span>";
             }
+
+            $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
             $sb .= "    <li class=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
                                                     . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
             if (!$pageHideOriginalUrl) {
@@ -513,7 +526,7 @@ class BEIXFClient implements BEIXFClientInterface {
                 $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
                 # chrome complains about <script> in cdata and //
                 $normalized_response = str_replace("<script>", "&lt;script&gt;", $this->_capsule_response);
-                $sb .= "    <li id=\"be_sdkms_capsule_response\">\n<![CDATA[\n" . $normalized_response . "\n//]]>\n</li>\n";
+                $sb .= "    <li id=\"be_sdkms_capsule_response\">\n<!-- be_ixf, [CDATA[\n" . $this->getDiagStringJSON() . "\n" . $normalized_response . "\n//]]-->\n</li>\n";
                 $sb .= "    <li id=\"be_sdkms_capsule_profile\">\n";
                 foreach ($this->profileHistory as $itemArray) {
                     $itemName = $itemArray[0];
@@ -563,6 +576,118 @@ class BEIXFClient implements BEIXFClientInterface {
                 $sb .= "</ul>\n";
             }
         }
+        return $sb;
+    }
+
+    /**
+     * This function returns the diagnostic JSON string.
+     */
+    protected function getDiagStringJSON() {
+        $config = array(
+            "account_id" => $this->capsule->getAccountId(),
+            "api_endpoint" => $this->config[self::$API_ENDPOINT_CONFIG],
+            "page_alias_url" => isset($this->config[self::$PAGE_ALIAS_URL]) ? $this->config[self::$PAGE_ALIAS_URL] : "",
+            "whitelist_params" => $this->config[self::$WHITELIST_PARAMETER_LIST_CONFIG],
+            "crawler_useragents" => $this->config[self::$CRAWLER_USER_AGENTS_CONFIG],
+            "proxy_protocol" => $this->config[self::$PROXY_PROTOCOL_CONFIG],
+            "proxy_host" => isset($this->config[self::$PROXY_HOST_CONFIG]) ? $this->config[self::$PROXY_HOST_CONFIG] : "",
+            "proxy_port" => $this->config[self::$PROXY_PORT_CONFIG],
+            "proxy_usr" => isset($this->config[self::$PROXY_LOGIN_CONFIG]) ? $this->config[self::$PROXY_LOGIN_CONFIG] : "",
+            "proxy_pwd" => isset($this->config[self::$PROXY_PASSWORD_CONFIG]) ? $this->config[self::$PROXY_PASSWORD_CONFIG] : "",
+            "socket_timeout" => $this->config[self::$SOCKET_TIMEOUT_CONFIG],
+            "socket_timeout_crawler" => $this->config[self::$CRAWLER_SOCKET_TIMEOUT_CONFIG],
+            "connection_timeout" => $this->config[self::$CONNECT_TIMEOUT_CONFIG],
+            "connection_timeout_crawler" => $this->config[self::$CRAWLER_CONNECT_TIMEOUT_CONFIG],
+            "charset" => $this->config[self::$CHARSET_CONFIG],
+            "force_direct_api_params" => $this->config[self::$FORCEDIRECTAPI_PARAMETER_LIST_CONFIG],
+            "page_independent" => isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) ? $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] : "",
+            "flat_file" => $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG],
+            "environment" => $this->config[self::$ENVIRONMENT_CONFIG],
+            "capsule_mode" => isset($this->config[self::$CAPSULE_MODE_CONFIG]) ? $this->config[self::$CAPSULE_MODE_CONFIG] : "",
+        );
+
+        $diag_string_arr = array(
+            "original_url" => $this->_original_url,
+            "content_base_path" => isset($this->config[self::$CONTENT_BASE_PATH_CONFIG]) ? $this->config[self::$CONTENT_BASE_PATH_CONFIG] : "",
+            "config" => $config,
+            "normalized_url" => $this->_normalized_url,
+        );
+
+        $api_created_epoch_time = $this->capsule->getDateCreated();
+        $api_created_date = "";
+
+        if(!empty($api_created_epoch_time)) {
+            $api_created_date = IXFSDKUtils::convertToNormalizedTimeZone($api_created_epoch_time, "pn");
+        }
+
+        $diag_string_arr["api_dt"] = $api_created_date;
+        $diag_string_arr["api_dt_epoch"] = $api_created_epoch_time;
+
+        $diag_string_arr["page_hash"] = IXFSDKUtils::getPageHash($this->_normalized_url);
+        $diag_string_arr["capsule_url"] = $this->_get_capsule_api_url;
+
+        $api_published_epoch_time = $this->capsule->getDatePublished();
+        $api_published_date = "";
+
+        if(!empty($api_published_epoch_time)) {
+            $api_published_date = IXFSDKUtils::convertToNormalizedTimeZone($api_published_epoch_time, "pn");
+        }
+
+        $diag_string_arr["capsule"] = array("mod_dt" => $api_published_date, "mod_dt_epoch" => $api_published_epoch_time);
+        $diag_string_arr["timer"] = $this->connectTime;
+        $diag_string_arr["messages"] = $this->errorMessages;
+
+        return json_encode($diag_string_arr, JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * This function returns the AES Encryption of the payload.
+     * This is used to return encrypt string of diagString
+     */
+    protected function getAESEncryption($data){
+        $cipher = self::$ENCRYPTION_CIPHER;
+        $key = $this->config[self::$ACCOUNT_ID_CONFIG];
+
+        $ivlen = openssl_cipher_iv_length($cipher);
+        $iv = openssl_random_pseudo_bytes($ivlen);
+        $cipher_text_raw = openssl_encrypt($data, $cipher, $key, $options = OPENSSL_RAW_DATA, $iv);
+        $hmac = hash_hmac('sha256', $cipher_text_raw, $key, $as_binary = true);
+
+        return  base64_encode($iv . $hmac . $cipher_text_raw);
+    }
+
+    /**
+     * This function returns the headopen diagnostic string.
+     */
+    protected function getHeadOpenDiagString() {
+        $sb = "\n<!-- be_ixf, sdk, gho-->";
+        $pageHideOriginalUrl = false;
+        if (isset($this->config[self::$PAGE_HIDE_ORIGINALURL]) && !$this->debugMode) {
+            $pageHideOriginalUrl = IXFSDKUtils::getBooleanValue($this->config[self::$PAGE_HIDE_ORIGINALURL]);
+        }
+
+        if($this->config[self::$DIAGNOSTIC_TYPE] != self::$DIAGNOSTIC_TYPE_PARTIAL_ENCRYPTED) {
+            $sb .= "\n<meta id=\"be:sdk\" content=\"" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "\" />";
+            $sb .= "\n<meta id=\"be:timer\" content=\"" . $this->connectTime . "ms\" />";
+            if (!$pageHideOriginalUrl) {
+                $sb .= "\n<meta id=\"be:orig_url\" content=\"" . $this->_original_url . "\" />";
+            }
+            $sb .= "\n<meta id=\"be:norm_url\" content=\"" . $this->_normalized_url . "\" />";
+            $sb .= "\n<meta id=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
+            $sb .= "\n<meta id=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
+        }
+
+        if($this->config[self::$DIAGNOSTIC_STRING] == self::$DIAGNOSTIC_STRING_ENABLED) {
+            $diag_string_json = $this->getDiagStringJSON();
+            $diag_string = ($this->config[self::$DIAGNOSTIC_TYPE] == self::$DIAGNOSTIC_TYPE_FULL) ?
+                            $diag_string_json : $this->getAESEncryption($diag_string_json);
+        } else {
+            $diag_string = "Disabled by diagString config value";
+        }
+
+        $sb .= "\n<meta id=\"be:diag\" content=\"" . $diag_string . "\" />";
+        $sb .= "\n<meta id=\"be:messages\" content=\"" . ((count($this->errorMessages) > 0) ? "true" : "false") . "\" />\n";
+
         return $sb;
     }
 
@@ -722,7 +847,9 @@ class BEIXFClient implements BEIXFClientInterface {
     }
 
     public function getHeadOpen() {
-        return $this->getFeatureString(Node::$NODE_TYPE_HEADSTR, Node::$FEATURE_GROUP_HEAD_OPEN, self::$TAG_NONE);
+        $sb = $this->getHeadOpenDiagString();
+        $sb .= $this->getFeatureString(Node::$NODE_TYPE_HEADSTR, Node::$FEATURE_GROUP_HEAD_OPEN, self::$TAG_NONE);
+        return $sb;
     }
 
     public function getBodyOpen($tag_format=1) {
@@ -1356,6 +1483,23 @@ class IXFSDKUtils {
         }
     }
 
+    /**
+     * Return date in this form: ym_201901 d_12; ct_50
+     */
+   public static function convertToNormalizedGoogleIndexTimeZoneWithTimer($epochTimeInMillis, $timer, $prefix = "") {
+        $sb = "";
+        $current_timezone = @date_default_timezone_get();
+
+        try {
+            date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
+            $sb .= strftime("${prefix}ym_%Y%m ${prefix}d_%d; ", $epochTimeInMillis / 1000);
+            $sb .= "${prefix}ct_" . IXFSDKUtils::roundUpElapsedTime($timer);
+            return $sb;
+        } finally {
+            date_default_timezone_set($current_timezone);
+        }
+    }
+
     public static function convertToNormalizedTimeZone($epochTimeInMillis, $prefix) {
         $sb = "";
         $current_timezone = @date_default_timezone_get();
@@ -1368,6 +1512,14 @@ class IXFSDKUtils {
             date_default_timezone_set($current_timezone);
         }
     }
+
+    /**
+     * Return rounded elapsed time as per the precision, default 50
+     */
+    public static function roundUpElapsedTime($timer, $precision = 50) {
+        return (ceil($timer) % $precision === 0) ? ceil($timer) : round(($timer + $precision / 2 ) / $precision) * $precision;
+    }
+
 }
 
 class Rule {

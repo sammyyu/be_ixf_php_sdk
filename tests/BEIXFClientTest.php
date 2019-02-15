@@ -416,6 +416,65 @@ final class BEIXFClientTest extends TestCase {
         $this->assertEquals("py_2017; pm_03; pd_01; ph_09; pmh_09; p_epoch:1488388194000", IXFSDKUtils::convertToNormalizedGoogleIndexTimeZone($epochTimeMillis, "p"));
     }
 
+    public function testConvertToNormalizedGoogleIndexTimeZoneWithTimer() {
+        // daylight savings 3/12/2017-11/5/2017 // ym_201901 d_12; ct_50
+        $epochTimeMillis = 1504199514000;
+        $timer = 35;
+        $this->assertEquals("ym_201708 d_31; ct_50",
+            IXFSDKUtils::convertToNormalizedGoogleIndexTimeZoneWithTimer($epochTimeMillis, $timer));
+
+        // daylight savings 3/12/2017-11/5/2017
+        // not supported by PHP
+        $epochTimeMillis = 1490980314000;
+        $timer = 85;
+        $this->assertEquals("ym_201703 d_31; ct_100",
+            IXFSDKUtils::convertToNormalizedGoogleIndexTimeZoneWithTimer($epochTimeMillis, $timer));
+
+        // standard
+        $epochTimeMillis = 1488388314000;
+        $timer = 100;
+        $this->assertEquals("ym_201703 d_01; ct_100",
+            IXFSDKUtils::convertToNormalizedGoogleIndexTimeZoneWithTimer($epochTimeMillis, $timer));
+
+        // test single digit month, day, hour, and minute
+        $epochTimeMillis = 1488388194000;
+        $timer = 190;
+        $this->assertEquals("ym_201703 d_01; ct_200", IXFSDKUtils::convertToNormalizedGoogleIndexTimeZoneWithTimer($epochTimeMillis, $timer));
+    }
+
+    public function testRoundUpElapsedTime() {
+        $timer = 10;
+        $this->assertEquals("50", IXFSDKUtils::roundUpElapsedTime($timer));
+
+        $timer = 50;
+        $precision = 50;
+        $this->assertEquals("50", IXFSDKUtils::roundUpElapsedTime($timer, $precision));
+
+        $timer = 51;
+        $precision = 50;
+        $this->assertEquals("100", IXFSDKUtils::roundUpElapsedTime($timer, $precision));
+
+        $timer = 75;
+        $precision = 50;
+        $this->assertEquals("100", IXFSDKUtils::roundUpElapsedTime($timer, $precision));
+
+        $timer = 137;
+        $precision = 50;
+        $this->assertEquals("150", IXFSDKUtils::roundUpElapsedTime($timer, $precision));
+
+        $timer = 195;
+        $precision = 50;
+        $this->assertEquals("200", IXFSDKUtils::roundUpElapsedTime($timer, $precision));
+
+        $timer = 25;
+        $precision = 100;
+        $this->assertEquals("100", IXFSDKUtils::roundUpElapsedTime($timer, $precision));
+
+        $timer = 175;
+        $precision = 100;
+        $this->assertEquals("200", IXFSDKUtils::roundUpElapsedTime($timer, $precision));
+    }
+
     public function testForSecure() {
         $this->assertEquals("https://www.google.com",
             Rule::evaluateRule("^(http:\/\/)(.*)", "https://$2", "http://www.google.com", false)[0]);
