@@ -35,6 +35,8 @@ $be_ixf = new BEIXFClient($be_ixf_config);
 
             <li><?php echo $be_ixf->getBodyString("flexblock_4") ?></li>
 
+            <li><?php echo $be_ixf->getCleanString("bodystr", "flexblock_5") ?></li>
+
         </ul>
     </div>
 

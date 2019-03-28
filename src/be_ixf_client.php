@@ -19,6 +19,8 @@ interface BEIXFClientInterface {
 
     public function getBodyString($feature_group, $tagFormat=3);
 
+    public function getCleanString($type, $feature_group);
+
     public function hasHeadString($feature_group);
 
     public function hasBodyString($feature_group);
@@ -708,8 +710,7 @@ class BEIXFClient implements BEIXFClientInterface {
             return $hasContent;
         }
         if ($tagFormat !== self::$TAG_NONE) {
-            $sb .= $this->generateEndingTags(self::$OTHER_BLOCKTYPE, $node_type, $publishingEngine, $engineVersion, $metaString, $publishedTime,
-                                             $elapsedTime, $tagFormat);
+            $sb = "\n<!-- be_ixf, " . $node_type .", " . $feature_group . " -->\n" . $sb;
         }
         return $sb;
     }
@@ -734,6 +735,10 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public function getBodyString($feature_group, $tag_format=3) {
         return $this->getFeatureString(Node::$NODE_TYPE_BODYSTR, $feature_group, $tag_format);
+    }
+
+    public function getCleanString($type, $feature_group){
+        return $this->getFeatureString($type, $feature_group, self::$TAG_NONE);
     }
 
     public function hasHeadString($feature_group) {
