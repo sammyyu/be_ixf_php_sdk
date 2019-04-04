@@ -818,7 +818,7 @@ function updateCapsule($capsule, $originalUrl, $normalizedURL, $userAgent) {
                 $capsule->setCapsuleNodeList($capsuleNodeList);
             }
         }
-        if ($configList != null && isset($configList->page_groups) && $auto_redirect_url == $originalUrl) {
+        if ($configList != null && isset($configList->page_groups) && $auto_redirect_url == $normalizedURL) {
             $page_groups = $configList->page_groups;
             $pageGroupEngine = new PageGroupEngine();
             $pageGroupEngine->setPageGroupRules($page_groups);
