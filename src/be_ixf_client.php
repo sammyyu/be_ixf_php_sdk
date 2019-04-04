@@ -801,7 +801,7 @@ function deserializeCapsuleJson($capsule_json) {
 function updateCapsule($capsule, $originalUrl, $normalizedURL, $userAgent) {
     try {
         $configList = $capsule->getConfigList();
-        $auto_redirect_url = $normalizedURL;
+        $auto_redirect_url = $originalUrl;
         // if redirect rules are set, add redirect node if auto_redirect_url is different from normalized url
         if ($configList != null && isset($configList->redirect_rules)) {
             $rules_list = $capsule->getConfigList()->redirect_rules;
