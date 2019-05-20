@@ -133,7 +133,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.21";
+    public static $CLIENT_VERSION = "1.4.22";
 
     private static $API_VERSION = "1.0.0";
 
@@ -284,9 +284,12 @@ class BEIXFClient implements BEIXFClientInterface {
             $this->disableRedirect = IXFSDKUtils::getBooleanValue($param_value);
         }
 
-        if (isset($_GET["ixf-endpoint"]) && (preg_match("/bc0a\.com$/", $_GET["ixf-endpoint"]) || preg_match("/brightedge\.com$/", $_GET["ixf-endpoint"]))) {
-            $this->allowDirectApi = false;
-            $this->config[self::$API_ENDPOINT_CONFIG] = $_GET["ixf-endpoint"];
+        if (isset($_GET["ixf-endpoint"]) && !empty($_GET["ixf-endpoint"])) {
+            $ixf_endpoint_url_parts = parse_url($_GET["ixf-endpoint"]);
+            if (isset($ixf_endpoint_url_parts['host']) && (preg_match("/bc0a\.com$/", $ixf_endpoint_url_parts['host']) || preg_match("/brightedge\.com$/", $ixf_endpoint_url_parts['host']))) {
+                $this->allowDirectApi = false;
+                $this->config[self::$API_ENDPOINT_CONFIG] = $_GET["ixf-endpoint"];
+            }
         }
 
         if (isset($this->config[self::$DEFER_REDIRECT])) {
@@ -306,6 +309,15 @@ class BEIXFClient implements BEIXFClientInterface {
         if ($this->client_user_agent != NULL && IXFSDKUtils::userAgentMatchesRegex($this->client_user_agent, $this->config[self::$CRAWLER_USER_AGENTS_CONFIG])) {
             $connect_timeout = $this->config[self::$CRAWLER_CONNECT_TIMEOUT_CONFIG];
             $socket_timeout = $this->config[self::$CRAWLER_SOCKET_TIMEOUT_CONFIG];
+        }
+        // set timeout be atleast 1000ms
+        if($connect_timeout<1000) {
+            $connect_timeout = 1000;
+            array_push($this->errorMessages,'connect_timeout cannot be less than 1000ms. Defaulting timeout to 1000 ms');
+        }
+        if($socket_timeout<1000) {
+            $socket_timeout = 1000;
+            array_push($this->errorMessages,'socket_timeout cannot be less than 1000ms. Defaulting timeout to 1000 ms');
         }
 
         $is_https = isset($_SERVER['HTTPS']);

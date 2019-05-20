@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.22] - 2019-05-20
+### Added
+- IXF enpoints to be protected
+- connection timeout to be defaulted to 1000ms if value lesser than 1000ms set in config
+
 ## [1.4.21] - 2019-04-15
 ### Added
 - Diagnostic type and diagnostic string configurations
