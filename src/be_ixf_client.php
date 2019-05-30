@@ -624,7 +624,8 @@ class BEIXFClient implements BEIXFClientInterface {
             "config" => $config,
             "normalized_url" => $this->_normalized_url,
         );
-        if ($this->capsule != null){
+
+        if ($this->capsule != null) {
             $api_created_epoch_time = $this->capsule->getDateCreated();
             $api_created_date = "";
 
@@ -634,10 +635,12 @@ class BEIXFClient implements BEIXFClientInterface {
 
             $diag_string_arr["api_dt"] = $api_created_date;
             $diag_string_arr["api_dt_epoch"] = $api_created_epoch_time;
+        }
 
-            $diag_string_arr["page_hash"] = IXFSDKUtils::getPageHash($this->_normalized_url);
-            $diag_string_arr["capsule_url"] = $this->_get_capsule_api_url;
+        $diag_string_arr["page_hash"] = IXFSDKUtils::getPageHash($this->_normalized_url);
+        $diag_string_arr["capsule_url"] = $this->_get_capsule_api_url;
 
+        if ($this->capsule != null) {
             $api_published_epoch_time = $this->capsule->getDatePublished();
             $api_published_date = "";
 
