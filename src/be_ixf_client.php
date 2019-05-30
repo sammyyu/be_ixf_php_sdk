@@ -596,7 +596,7 @@ class BEIXFClient implements BEIXFClientInterface {
      */
     protected function getDiagStringJSON() {
         $config = array(
-            "account_id" => $this->capsule->getAccountId(),
+            "account_id" => $this->config[self::$ACCOUNT_ID_CONFIG],
             "api_endpoint" => $this->config[self::$API_ENDPOINT_CONFIG],
             "page_alias_url" => isset($this->config[self::$PAGE_ALIAS_URL]) ? $this->config[self::$PAGE_ALIAS_URL] : "",
             "whitelist_params" => $this->config[self::$WHITELIST_PARAMETER_LIST_CONFIG],
@@ -624,28 +624,29 @@ class BEIXFClient implements BEIXFClientInterface {
             "config" => $config,
             "normalized_url" => $this->_normalized_url,
         );
+        if ($this->capsule != null){
+            $api_created_epoch_time = $this->capsule->getDateCreated();
+            $api_created_date = "";
 
-        $api_created_epoch_time = $this->capsule->getDateCreated();
-        $api_created_date = "";
+            if(!empty($api_created_epoch_time)) {
+                $api_created_date = IXFSDKUtils::convertToNormalizedTimeZone($api_created_epoch_time, "pn");
+            }
 
-        if(!empty($api_created_epoch_time)) {
-            $api_created_date = IXFSDKUtils::convertToNormalizedTimeZone($api_created_epoch_time, "pn");
+            $diag_string_arr["api_dt"] = $api_created_date;
+            $diag_string_arr["api_dt_epoch"] = $api_created_epoch_time;
+
+            $diag_string_arr["page_hash"] = IXFSDKUtils::getPageHash($this->_normalized_url);
+            $diag_string_arr["capsule_url"] = $this->_get_capsule_api_url;
+
+            $api_published_epoch_time = $this->capsule->getDatePublished();
+            $api_published_date = "";
+
+            if(!empty($api_published_epoch_time)) {
+                $api_published_date = IXFSDKUtils::convertToNormalizedTimeZone($api_published_epoch_time, "pn");
+            }
+
+            $diag_string_arr["capsule"] = array("mod_dt" => $api_published_date, "mod_dt_epoch" => $api_published_epoch_time);
         }
-
-        $diag_string_arr["api_dt"] = $api_created_date;
-        $diag_string_arr["api_dt_epoch"] = $api_created_epoch_time;
-
-        $diag_string_arr["page_hash"] = IXFSDKUtils::getPageHash($this->_normalized_url);
-        $diag_string_arr["capsule_url"] = $this->_get_capsule_api_url;
-
-        $api_published_epoch_time = $this->capsule->getDatePublished();
-        $api_published_date = "";
-
-        if(!empty($api_published_epoch_time)) {
-            $api_published_date = IXFSDKUtils::convertToNormalizedTimeZone($api_published_epoch_time, "pn");
-        }
-
-        $diag_string_arr["capsule"] = array("mod_dt" => $api_published_date, "mod_dt_epoch" => $api_published_epoch_time);
         $diag_string_arr["timer"] = $this->connectTime;
         $diag_string_arr["messages"] = $this->errorMessages;
 
@@ -685,8 +686,10 @@ class BEIXFClient implements BEIXFClientInterface {
                 $sb .= "\n<meta id=\"be:orig_url\" content=\"" . $this->_original_url . "\" />";
             }
             $sb .= "\n<meta id=\"be:norm_url\" content=\"" . $this->_normalized_url . "\" />";
-            $sb .= "\n<meta id=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
-            $sb .= "\n<meta id=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
+            if ($this->capsule != null) {
+                $sb .= "\n<meta id=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
+                $sb .= "\n<meta id=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
+            }
         }
 
         if($this->config[self::$DIAGNOSTIC_STRING] == self::$DIAGNOSTIC_STRING_ENABLED) {
