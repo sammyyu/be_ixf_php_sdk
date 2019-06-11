@@ -133,7 +133,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.22";
+    public static $CLIENT_VERSION = "1.4.23";
 
     private static $API_VERSION = "1.0.0";
 
@@ -286,7 +286,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
         if (isset($_GET["ixf-endpoint"]) && !empty($_GET["ixf-endpoint"])) {
             $ixf_endpoint_url_parts = parse_url($_GET["ixf-endpoint"]);
-            if (isset($ixf_endpoint_url_parts['host']) && (preg_match("/bc0a\.com$/", $ixf_endpoint_url_parts['host']) || preg_match("/brightedge\.com$/", $ixf_endpoint_url_parts['host']))) {
+            if (isset($ixf_endpoint_url_parts['host']) && (preg_match("/^ixf.-api\.(bc0a|brightedge)\.com$/", $ixf_endpoint_url_parts['host']) || $ixf_endpoint_url_parts['host'] == "api.brightedge.com")) {
                 $this->allowDirectApi = false;
                 $this->config[self::$API_ENDPOINT_CONFIG] = $_GET["ixf-endpoint"];
             }
@@ -686,9 +686,9 @@ class BEIXFClient implements BEIXFClientInterface {
             $sb .= "\n<meta id=\"be:sdk\" content=\"" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "\" />";
             $sb .= "\n<meta id=\"be:timer\" content=\"" . $this->connectTime . "ms\" />";
             if (!$pageHideOriginalUrl) {
-                $sb .= "\n<meta id=\"be:orig_url\" content=\"" . $this->_original_url . "\" />";
+                $sb .= "\n<meta id=\"be:orig_url\" content=\"" . urlencode($this->_original_url) . "\" />";
             }
-            $sb .= "\n<meta id=\"be:norm_url\" content=\"" . $this->_normalized_url . "\" />";
+            $sb .= "\n<meta id=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
             if ($this->capsule != null) {
                 $sb .= "\n<meta id=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
                 $sb .= "\n<meta id=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
