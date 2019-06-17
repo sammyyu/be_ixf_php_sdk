@@ -133,7 +133,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.23";
+    public static $CLIENT_VERSION = "1.4.25";
 
     private static $API_VERSION = "1.0.0";
 
@@ -527,9 +527,9 @@ class BEIXFClient implements BEIXFClientInterface {
             $sb .= "    <li class=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
                                                     . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
             if (!$pageHideOriginalUrl) {
-                $sb .= "    <li id=\"be_sdkms_original_url\">" . $this->_original_url . "</li>\n";
+                $sb .= "    <li id=\"be_sdkms_original_url\">" . htmlentities($this->_original_url) . "</li>\n";
             }
-            $sb .= "    <li id=\"be_sdkms_normalized_url\">" . $this->_normalized_url . "</li>\n";
+            $sb .= "    <li id=\"be_sdkms_normalized_url\">" . htmlentities($this->_normalized_url) . "</li>\n";
             if ($this->debugMode) {
                 if ($this->capsule != null) {
                     $sb .= "    <li id=\"be_sdkms_page_group\">" . print_r($this->capsule->getPageGroup(), true) . "</li>\n";

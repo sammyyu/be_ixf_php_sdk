@@ -1,11 +1,18 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.25] - 2019-06-17
+### Fixed
+- htmlentities orginal and normalized diagnostic urls
+
+## [1.4.24] - 2019-06-11
+### Fixed
+- urlencode diagnostic urls
+- api endpoints change regex
+
 ## [1.4.23] - 2019-05-30
 ### Fixed
 - PHP error on null capsule response
-- urlencode daignostic urls
-- api endpoints change regex
 
 ## [1.4.22] - 2019-05-20
 ### Added
