@@ -682,19 +682,6 @@ class BEIXFClient implements BEIXFClientInterface {
             $pageHideOriginalUrl = IXFSDKUtils::getBooleanValue($this->config[self::$PAGE_HIDE_ORIGINALURL]);
         }
 
-        if($this->config[self::$DIAGNOSTIC_TYPE] != self::$DIAGNOSTIC_TYPE_PARTIAL_ENCRYPTED) {
-            $sb .= "\n<meta id=\"be:sdk\" content=\"" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "\" />";
-            $sb .= "\n<meta id=\"be:timer\" content=\"" . $this->connectTime . "ms\" />";
-            if (!$pageHideOriginalUrl) {
-                $sb .= "\n<meta id=\"be:orig_url\" content=\"" . urlencode($this->_original_url) . "\" />";
-            }
-            $sb .= "\n<meta id=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
-            if ($this->capsule != null) {
-                $sb .= "\n<meta id=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
-                $sb .= "\n<meta id=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
-            }
-        }
-
         if($this->config[self::$DIAGNOSTIC_STRING] == self::$DIAGNOSTIC_STRING_ENABLED) {
             $diag_string_json = $this->getDiagStringJSON();
             $diag_string = ($this->config[self::$DIAGNOSTIC_TYPE] == self::$DIAGNOSTIC_TYPE_FULL) ?
@@ -703,10 +690,40 @@ class BEIXFClient implements BEIXFClientInterface {
             $diag_string = "Disabled by diagString config value";
         }
 
+        $sb .= "\n<meta id=\"be:sdk\" content=\"" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "\" />";
+        $sb .= "\n<meta id=\"be:timer\" content=\"" . $this->connectTime . "ms\" />";
+        if (!$pageHideOriginalUrl) {
+            $sb .= "\n<meta id=\"be:orig_url\" content=\"" . urlencode($this->_original_url) . "\" />";
+        }
+        $sb .= "\n<meta id=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
+        //added capsule url originally missing
+        $sb .= "\n<meta id=\"be:capsule_url\" content=\"" . urlencode($this->_get_capsule_api_url) . "\" />";
+        if ($this->capsule != null) {
+            $sb .= "\n<meta id=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
+            $sb .= "\n<meta id=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
+        }
+
         $sb .= "\n<meta id=\"be:diag\" content=\"" . $diag_string . "\" />";
         $sb .= "\n<meta id=\"be:messages\" content=\"" . ((count($this->errorMessages) > 0) ? "true" : "false") . "\" />\n";
 
         return $sb;
+
+        // if($this->config[self::$DIAGNOSTIC_TYPE] != self::$DIAGNOSTIC_TYPE_PARTIAL_ENCRYPTED) {
+        //     $sb .= "\n<meta id=\"be:sdk\" content=\"" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "\" />";
+        //     $sb .= "\n<meta id=\"be:timer\" content=\"" . $this->connectTime . "ms\" />";
+        //     if (!$pageHideOriginalUrl) {
+        //         $sb .= "\n<meta id=\"be:orig_url\" content=\"" . urlencode($this->_original_url) . "\" />";
+        //     }
+        //     $sb .= "\n<meta id=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
+        //     //added capsule url originally missing
+        //     $sb .= "\n<meta id=\"be:capsule_url\" content=\"" . urlencode($this->_get_capsule_api_url) . "\" />";
+        //     if ($this->capsule != null) {
+        //         $sb .= "\n<meta id=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
+        //         $sb .= "\n<meta id=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
+        //     }
+        // }
+
+        
     }
 
     public function isLocalContentMode() {
