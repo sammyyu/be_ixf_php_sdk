@@ -133,7 +133,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.25";
+    public static $CLIENT_VERSION = "1.4.26";
 
     private static $API_VERSION = "1.0.0";
 
