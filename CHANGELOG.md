@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.27] - 2019-10-21
+### Updated
+- Diagnostic info update
+
 ## [1.4.26] - 2019-07-19
 ### Fixed
 - Removed partial Encryption and added capsule url in Meta

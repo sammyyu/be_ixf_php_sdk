@@ -133,7 +133,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.26";
+    public static $CLIENT_VERSION = "1.4.27";
 
     private static $API_VERSION = "1.0.0";
 
@@ -172,7 +172,7 @@ class BEIXFClient implements BEIXFClientInterface {
     protected $profileHistory = array();
 
     /**
-     * Instaniate IXF Client using a parameter array
+     * Instantiate IXF Client using a parameter array
      *
      * @access public
      * @param array of configuration key, value pairs.  sdk.account is required
@@ -509,43 +509,33 @@ class BEIXFClient implements BEIXFClientInterface {
         }
     }
 
-    protected function generateEndingTags($blockType, $node_type, $publishingEngine,
-        $engineVersion, $metaString, $publishedTimeEpochMilliseconds, $elapsedTime, $tagFormat) {
+    protected function generateEndingTags($blockType,
+                                          $node_type,
+                                          $publishingEngine,
+                                          $engineVersion,
+                                          $metaString,
+                                          $publishedTimeEpochMilliseconds,
+                                          $elapsedTime,
+                                          $tagFormat) {
         $sb = "";
-        $pageHideOriginalUrl = false;
-        if (isset($this->config[self::$PAGE_HIDE_ORIGINALURL]) && !$this->debugMode) {
-            $pageHideOriginalUrl = IXFSDKUtils::getBooleanValue($this->config[self::$PAGE_HIDE_ORIGINALURL]);
-        }
         if ($blockType == self::$CLOSE_BLOCKTYPE) {
             $sb .= "\n<!-- be_ixf, sdk, is -->\n";
-            if($this->config[self::$DIAGNOSTIC_TYPE] == self::$DIAGNOSTIC_TYPE_FULL
-                || $this->config[self::$DIAGNOSTIC_TYPE] == self::$DIAGNOSTIC_TYPE_FULL_ENCRYPTED) {
-                $sb .= "\n<span id=\"be:sdk_is\" style=\"display:none!important\">be_ixf;" . IXFSDKUtils::convertToNormalizedGoogleIndexTimeZoneWithTimer(round(microtime(true) * 1000), $this->connectTime) . "</span>";
-            }
-
-            $sb .= "\n<ul id=\"be_sdkms_capsule\" style=\"display:none!important\">\n";
-            $sb .= "    <li class=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
-                                                    . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
-            if (!$pageHideOriginalUrl) {
-                $sb .= "    <li id=\"be_sdkms_original_url\">" . htmlentities($this->_original_url) . "</li>\n";
-            }
-            $sb .= "    <li id=\"be_sdkms_normalized_url\">" . htmlentities($this->_normalized_url) . "</li>\n";
             if ($this->debugMode) {
+                $sb .= "<ul id=\"be_sdkms_capsule_open\" style=\"display:none!important\">\n";
                 if ($this->capsule != null) {
-                    $sb .= "    <li id=\"be_sdkms_page_group\">" . print_r($this->capsule->getPageGroup(), true) . "</li>\n";
+                    $sb .= "<li id=\"be_sdkms_page_group\">" . print_r($this->capsule->getPageGroup(), true) . "</li>\n";
                 }
-                $sb .= "    <li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
-                $sb .= "    <li id=\"be_sdkms_capsule_url\">" . $this->_get_capsule_api_url . "</li>\n";
+                $sb .= "<li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
                 # chrome complains about <script> in cdata and //
                 $normalized_response = str_replace("<script>", "&lt;script&gt;", $this->_capsule_response);
-                $sb .= "    <li id=\"be_sdkms_capsule_response\">\n<!-- be_ixf, [CDATA[\n" . $this->getDiagStringJSON() . "\n" . $normalized_response . "\n//]]-->\n</li>\n";
-                $sb .= "    <li id=\"be_sdkms_capsule_profile\">\n";
+                $sb .= "<li id=\"be_sdkms_capsule_response\">\n<!-- be_ixf, [CDATA[\n" . $this->getDiagStringJSON() . "\n" . $normalized_response . "\n//]]-->\n</li>\n";
+                $sb .= "<ul id=\"be_sdkms_capsule_profile\">\n";
                 foreach ($this->profileHistory as $itemArray) {
                     $itemName = $itemArray[0];
                     $itemTime = $itemArray[1];
-                    $sb .= "       <li id=\"" . $itemName . "\" time=\"" . $itemTime . "\" />\n";
+                    $sb .= "<li id=\"" . $itemName . "\">" . $itemTime . "</li>\n";
                 }
-                $sb .= "    </li>\n";
+                $sb .= "</ul>\n";
             }
 
             $sb .= "</ul>\n";
@@ -553,6 +543,10 @@ class BEIXFClient implements BEIXFClientInterface {
             // capsule information only applies to init block
             if ($tagFormat == self::$TAG_BODY_OPEN) {
                 $sb .= "\n<ul id=\"be_sdkms_capsule_open\" style=\"display:none!important\">\n";
+                # chrome complains about <script> in cdata and //
+                $normalized_response = str_replace("<script>", "&lt;script&gt;", $this->_capsule_response);
+                $sb .= "    <li id=\"be_sdkms_capsule_response\">\n<!-- be_ixf, [CDATA[\n" . $this->getDiagStringJSON() . "\n" . $normalized_response . "\n//]]-->\n</li>\n";
+                $sb .= "    <li id=\"be_sdkms_capsule_profile\">\n";
                 $sb .= "    <li class=\"be_sdkms_sdk_version\">" . self::$PRODUCT_NAME . "; " . self::$CLIENT_NAME . "; "
                                                         . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "</li>\n";
                 $sb .= "    <li id=\"be_sdkms_capsule_connect_timer\">" . $this->connectTime . " ms</li>\n";
@@ -690,40 +684,40 @@ class BEIXFClient implements BEIXFClientInterface {
             $diag_string = "Disabled by diagString config value";
         }
 
-        $sb .= "\n<meta id=\"be:sdk\" content=\"" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "\" />";
-        $sb .= "\n<meta id=\"be:timer\" content=\"" . $this->connectTime . "ms\" />";
+        $sb .= "\n<meta name=\"be:sdk\" content=\"" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "\" />";
+        $sb .= "\n<meta name=\"be:timer\" content=\"" . $this->connectTime . "ms\" />";
         if (!$pageHideOriginalUrl) {
-            $sb .= "\n<meta id=\"be:orig_url\" content=\"" . urlencode($this->_original_url) . "\" />";
+            $sb .= "\n<meta name=\"be:orig_url\" content=\"" . urlencode($this->_original_url) . "\" />";
         }
-        $sb .= "\n<meta id=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
+        $sb .= "\n<meta name=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
         //added capsule url originally missing
-        $sb .= "\n<meta id=\"be:capsule_url\" content=\"" . urlencode($this->_get_capsule_api_url) . "\" />";
+        $sb .= "\n<meta name=\"be:capsule_url\" content=\"" . urlencode($this->_get_capsule_api_url) . "\" />";
         if ($this->capsule != null) {
-            $sb .= "\n<meta id=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
-            $sb .= "\n<meta id=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
+            $createDatetimeStr = $this->capsule->getDatetimeStrFromMilSec($this->capsule->getDateCreated());
+            $sb .= "\n<meta name=\"be:api_dt\" content=\"" . $createDatetimeStr . "\" />";
+            $publishDatetimeStr = $this->capsule->getDatetimeStrFromMilSec($this->capsule->getDatePublished());
+            $sb .= "\n<meta name=\"be:mod_dt\" content=\"" . $publishDatetimeStr . "\" />";
         }
 
-        $sb .= "\n<meta id=\"be:diag\" content=\"" . $diag_string . "\" />";
-        $sb .= "\n<meta id=\"be:messages\" content=\"" . ((count($this->errorMessages) > 0) ? "true" : "false") . "\" />\n";
+        $sb .= "\n<meta name=\"be:diag\" content=\"" . $diag_string . "\" />";
+        $sb .= "\n<meta name=\"be:messages\" content=\"" . ((count($this->errorMessages) > 0) ? "true" : "false") . "\" />\n";
 
         return $sb;
 
         // if($this->config[self::$DIAGNOSTIC_TYPE] != self::$DIAGNOSTIC_TYPE_PARTIAL_ENCRYPTED) {
-        //     $sb .= "\n<meta id=\"be:sdk\" content=\"" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "\" />";
-        //     $sb .= "\n<meta id=\"be:timer\" content=\"" . $this->connectTime . "ms\" />";
+        //     $sb .= "\n<meta name=\"be:sdk\" content=\"" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "\" />";
+        //     $sb .= "\n<meta name=\"be:timer\" content=\"" . $this->connectTime . "ms\" />";
         //     if (!$pageHideOriginalUrl) {
-        //         $sb .= "\n<meta id=\"be:orig_url\" content=\"" . urlencode($this->_original_url) . "\" />";
+        //         $sb .= "\n<meta name=\"be:orig_url\" content=\"" . urlencode($this->_original_url) . "\" />";
         //     }
-        //     $sb .= "\n<meta id=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
+        //     $sb .= "\n<meta name=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
         //     //added capsule url originally missing
-        //     $sb .= "\n<meta id=\"be:capsule_url\" content=\"" . urlencode($this->_get_capsule_api_url) . "\" />";
+        //     $sb .= "\n<meta name=\"be:capsule_url\" content=\"" . urlencode($this->_get_capsule_api_url) . "\" />";
         //     if ($this->capsule != null) {
-        //         $sb .= "\n<meta id=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
-        //         $sb .= "\n<meta id=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
+        //         $sb .= "\n<meta name=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
+        //         $sb .= "\n<meta name=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
         //     }
         // }
-
-        
     }
 
     public function isLocalContentMode() {
@@ -1275,6 +1269,15 @@ class Capsule {
 
     public function setPageGroup($pageGroup) {
         $this->pageGroup = $pageGroup;
+    }
+
+    /**
+     * Get a format datetime string from million second
+     * @param $milSec: million seconds
+     * @return string: "py_2019; pm_07; pd_26; ph_11; pmh_51; p_epoch:1564167114318"
+     */
+    public function getDatetimeStrFromMilSec($milSec) {
+        return date('p\y_Y;p\m_m;p\d_d;p\h_H;p\m\h_i;', $milSec/1000) . 'p_epoch:' . $milSec;
     }
 }
 
