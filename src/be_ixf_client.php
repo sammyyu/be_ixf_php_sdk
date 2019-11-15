@@ -85,7 +85,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $DEFAULT_CHARSET = "UTF-8";
     public static $DEFAULT_DIRECT_API_ENDPOINT = "https://api.brightedge.com";
-    public static $DEFAULT_API_ENDPOINT = "http://ixfd-api.bc0a.com";
+    public static $DEFAULT_API_ENDPOINT = "https://ixfd-api.bc0a.com";
     public static $DEFAULT_ACCOUNT_ID = "0";
 
     public static $DIAGNOSTIC_TYPE = "diagnostic.type";
@@ -133,7 +133,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.27";
+    public static $CLIENT_VERSION = "1.4.28";
 
     private static $API_VERSION = "1.0.0";
 
@@ -144,6 +144,8 @@ class BEIXFClient implements BEIXFClientInterface {
     private $connectTime = 0;
 
     private $_get_capsule_api_url = null;
+    // capsule URL displays in head diagnostic info
+    private $displayCapsuleUrl = null;
     private $capsule = null;
     private $_capsule_response = null;
 
@@ -387,8 +389,22 @@ class BEIXFClient implements BEIXFClientInterface {
             $urlBase .= "/";
         }
 
-        $this->_get_capsule_api_url = $urlBase . 'api/ixf/' . self::$API_VERSION . '/' . $get_capsule_api_call_name . '/' . $this->config[self::$ACCOUNT_ID_CONFIG] .
-        '/' . $page_hash . '?' . http_build_query($request_params);
+        $this->_get_capsule_api_url = $urlBase
+            . 'api/ixf/'
+            . self::$API_VERSION . '/'
+            . $get_capsule_api_call_name . '/'
+            . $this->config[self::$ACCOUNT_ID_CONFIG] . '/'
+            . $page_hash
+            . '?'
+            . http_build_query($request_params);
+
+        $this->displayCapsuleUrl = $urlBase
+            . 'api/ixf/'
+            . self::$API_VERSION . '/'
+            . $get_capsule_api_call_name . '/'
+            . $this->config[self::$ACCOUNT_ID_CONFIG] . '/'
+            . $page_hash;
+
         $startTime = round(microtime(true) * 1000);
 
         if ($this->isLocalContentMode()) {
@@ -691,7 +707,7 @@ class BEIXFClient implements BEIXFClientInterface {
         }
         $sb .= "\n<meta name=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
         //added capsule url originally missing
-        $sb .= "\n<meta name=\"be:capsule_url\" content=\"" . urlencode($this->_get_capsule_api_url) . "\" />";
+        $sb .= "\n<meta name=\"be:capsule_url\" content=\"" . urlencode($this->displayCapsuleUrl) . "\" />";
         if ($this->capsule != null) {
             $createDatetimeStr = $this->capsule->getDatetimeStrFromMilSec($this->capsule->getDateCreated());
             $sb .= "\n<meta name=\"be:api_dt\" content=\"" . $createDatetimeStr . "\" />";
@@ -703,21 +719,6 @@ class BEIXFClient implements BEIXFClientInterface {
         $sb .= "\n<meta name=\"be:messages\" content=\"" . ((count($this->errorMessages) > 0) ? "true" : "false") . "\" />\n";
 
         return $sb;
-
-        // if($this->config[self::$DIAGNOSTIC_TYPE] != self::$DIAGNOSTIC_TYPE_PARTIAL_ENCRYPTED) {
-        //     $sb .= "\n<meta name=\"be:sdk\" content=\"" . self::$CLIENT_NAME . "_" . self::$CLIENT_VERSION . "\" />";
-        //     $sb .= "\n<meta name=\"be:timer\" content=\"" . $this->connectTime . "ms\" />";
-        //     if (!$pageHideOriginalUrl) {
-        //         $sb .= "\n<meta name=\"be:orig_url\" content=\"" . urlencode($this->_original_url) . "\" />";
-        //     }
-        //     $sb .= "\n<meta name=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
-        //     //added capsule url originally missing
-        //     $sb .= "\n<meta name=\"be:capsule_url\" content=\"" . urlencode($this->_get_capsule_api_url) . "\" />";
-        //     if ($this->capsule != null) {
-        //         $sb .= "\n<meta name=\"be:api_dt_epoch\" content=\"" . $this->capsule->getDateCreated() . "\" />";
-        //         $sb .= "\n<meta name=\"be:mod_dt_epoch\" content=\"" . $this->capsule->getDatePublished() . "\" />";
-        //     }
-        // }
     }
 
     public function isLocalContentMode() {

@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.28] - 2019-11-15
+### Added
+- Add displayCapsuleUrl
+
 ## [1.4.27] - 2019-10-21
 ### Updated
 - Diagnostic info update
