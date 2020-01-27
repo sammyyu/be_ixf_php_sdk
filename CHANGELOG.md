@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [1.4.29] - 2020-01-27
+### Fixed
+- Fix orphan ul tag
+
 ## [1.4.28] - 2019-11-15
 ### Added
 - Add displayCapsuleUrl

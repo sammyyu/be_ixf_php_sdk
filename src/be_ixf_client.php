@@ -133,7 +133,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.28";
+    public static $CLIENT_VERSION = "1.4.29";
 
     private static $API_VERSION = "1.0.0";
 
@@ -312,7 +312,7 @@ class BEIXFClient implements BEIXFClientInterface {
             $connect_timeout = $this->config[self::$CRAWLER_CONNECT_TIMEOUT_CONFIG];
             $socket_timeout = $this->config[self::$CRAWLER_SOCKET_TIMEOUT_CONFIG];
         }
-        // set timeout be atleast 1000ms
+        // set timeout be at least 1000ms
         if($connect_timeout<1000) {
             $connect_timeout = 1000;
             array_push($this->errorMessages,'connect_timeout cannot be less than 1000ms. Defaulting timeout to 1000 ms');
@@ -538,6 +538,7 @@ class BEIXFClient implements BEIXFClientInterface {
             $sb .= "\n<!-- be_ixf, sdk, is -->\n";
             if ($this->debugMode) {
                 $sb .= "<ul id=\"be_sdkms_capsule_open\" style=\"display:none!important\">\n";
+
                 if ($this->capsule != null) {
                     $sb .= "<li id=\"be_sdkms_page_group\">" . print_r($this->capsule->getPageGroup(), true) . "</li>\n";
                 }
@@ -545,6 +546,7 @@ class BEIXFClient implements BEIXFClientInterface {
                 # chrome complains about <script> in cdata and //
                 $normalized_response = str_replace("<script>", "&lt;script&gt;", $this->_capsule_response);
                 $sb .= "<li id=\"be_sdkms_capsule_response\">\n<!-- be_ixf, [CDATA[\n" . $this->getDiagStringJSON() . "\n" . $normalized_response . "\n//]]-->\n</li>\n";
+
                 $sb .= "<ul id=\"be_sdkms_capsule_profile\">\n";
                 foreach ($this->profileHistory as $itemArray) {
                     $itemName = $itemArray[0];
@@ -552,9 +554,9 @@ class BEIXFClient implements BEIXFClientInterface {
                     $sb .= "<li id=\"" . $itemName . "\">" . $itemTime . "</li>\n";
                 }
                 $sb .= "</ul>\n";
-            }
 
-            $sb .= "</ul>\n";
+                $sb .= "</ul>\n";
+            }
         } else {
             // capsule information only applies to init block
             if ($tagFormat == self::$TAG_BODY_OPEN) {
