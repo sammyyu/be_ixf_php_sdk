@@ -8,6 +8,7 @@ $be_ixf_config = array(
     BEIXFClient::$CAPSULE_MODE_CONFIG => BEIXFClient::$LOCAL_GLOBAL_CAPSULE_MODE, //use this to test connection to be_ixf_client.php
     // BEIXFClient::$CAPSULE_MODE_CONFIG => BEIXFClient::$REMOTE_PROD_GLOBAL_CAPSULE_MODE, //use this to test connection to api
     // BEIXFClient::$CAPSULE_MODE_CONFIG => BEIXFClient::$REMOTE_PROD_CAPSULE_MODE, // use this for for live mode
+    BEIXFClient::$ALLOW_DEBUG_MODE = false,
 );
 
 $be_ixf = new BEIXFClient($be_ixf_config);

@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+## [1.5.0] - 2020-04-09
+### Added
+- Expose $ALLOW_DEBUG_MODE as a SDK configuration to customers
+- Remove ixf-endpoint from URL parameters
+
 ## [1.4.29] - 2020-01-27
 ### Fixed
 - Fix orphan ul tag

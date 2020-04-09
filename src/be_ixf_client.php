@@ -98,6 +98,8 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $DIAGNOSTIC_STRING_ENABLED = true;
     public static $DIAGNOSTIC_STRING_DISABLED = false;
 
+    public static $ALLOW_DEBUG_MODE = true;
+
 
     /**
     *** curl connect/socket timeout should be a full second interval
@@ -133,7 +135,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.4.29";
+    public static $CLIENT_VERSION = "1.5.0";
 
     private static $API_VERSION = "1.0.0";
 
@@ -278,20 +280,12 @@ class BEIXFClient implements BEIXFClientInterface {
 
         if (isset($_GET["ixf-debug"])) {
             $param_value = $_GET["ixf-debug"];
-            $this->debugMode = IXFSDKUtils::getBooleanValue($param_value);
+            $this->debugMode = IXFSDKUtils::getBooleanValue($param_value) && self::$ALLOW_DEBUG_MODE;
         }
 
         if (isset($_GET["ixf-disable-redirect"])) {
             $param_value = $_GET["ixf-disable-redirect"];
             $this->disableRedirect = IXFSDKUtils::getBooleanValue($param_value);
-        }
-
-        if (isset($_GET["ixf-endpoint"]) && !empty($_GET["ixf-endpoint"])) {
-            $ixf_endpoint_url_parts = parse_url($_GET["ixf-endpoint"]);
-            if (isset($ixf_endpoint_url_parts['host']) && (preg_match("/^ixf.-api\.(bc0a|brightedge)\.com$/", $ixf_endpoint_url_parts['host']) || $ixf_endpoint_url_parts['host'] == "api.brightedge.com")) {
-                $this->allowDirectApi = false;
-                $this->config[self::$API_ENDPOINT_CONFIG] = $_GET["ixf-endpoint"];
-            }
         }
 
         if (isset($this->config[self::$DEFER_REDIRECT])) {
