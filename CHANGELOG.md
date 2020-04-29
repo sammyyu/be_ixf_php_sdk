@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+## [1.5.1] - 2020-04-29
+### Added
+- Add ixf-endpoint to URL parameters
+- Add validateGetBoolValue function to validate the parameters in URL
+
 ## [1.5.0] - 2020-04-09
 ### Added
 - Expose $ALLOW_DEBUG_MODE as a SDK configuration to customers

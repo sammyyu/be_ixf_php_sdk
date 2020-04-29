@@ -135,7 +135,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.0";
+    public static $CLIENT_VERSION = "1.5.1";
 
     private static $API_VERSION = "1.0.0";
 
@@ -279,18 +279,29 @@ class BEIXFClient implements BEIXFClientInterface {
         }
 
         if (isset($_GET["ixf-debug"])) {
-            $param_value = $_GET["ixf-debug"];
-            $this->debugMode = IXFSDKUtils::getBooleanValue($param_value) && self::$ALLOW_DEBUG_MODE;
+            $this->debugMode = IXFSDKUtils::validateGetBoolValue($_GET["ixf-debug"]) && self::$ALLOW_DEBUG_MODE;
         }
 
         if (isset($_GET["ixf-disable-redirect"])) {
-            $param_value = $_GET["ixf-disable-redirect"];
-            $this->disableRedirect = IXFSDKUtils::getBooleanValue($param_value);
+            $this->disableRedirect = IXFSDKUtils::validateGetBoolValue($_GET["ixf-disable-redirect"]);
         }
 
         if (isset($this->config[self::$DEFER_REDIRECT])) {
-            $str_value = $this->config[self::$DEFER_REDIRECT];
-            $this->deferRedirect = IXFSDKUtils::getBooleanValue($str_value);
+            $this->deferRedirect = IXFSDKUtils::validateGetBoolValue($this->config[self::$DEFER_REDIRECT]);
+        }
+
+        if (isset($_GET["ixf-endpoint"]) && !empty($_GET["ixf-endpoint"])) {
+            $ixf_endpoint_url_parts = parse_url($_GET["ixf-endpoint"]);
+            if (isset($ixf_endpoint_url_parts['host'])
+                && preg_match(
+                    "^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
+                    $ixf_endpoint_url_parts['host'])
+                && preg_match(
+                    "/^(ixf.-api|api)\.(bc0a|brightedge)\.com$/",
+                    $ixf_endpoint_url_parts['host'])) {
+                $this->allowDirectApi = false;
+                $this->config[self::$API_ENDPOINT_CONFIG] = $_GET["ixf-endpoint"];
+            }
         }
 
         $connect_timeout = $this->config[self::$CONNECT_TIMEOUT_CONFIG];
@@ -685,7 +696,7 @@ class BEIXFClient implements BEIXFClientInterface {
         $sb = "\n<!-- be_ixf, sdk, gho-->";
         $pageHideOriginalUrl = false;
         if (isset($this->config[self::$PAGE_HIDE_ORIGINALURL]) && !$this->debugMode) {
-            $pageHideOriginalUrl = IXFSDKUtils::getBooleanValue($this->config[self::$PAGE_HIDE_ORIGINALURL]);
+            $pageHideOriginalUrl = IXFSDKUtils::validateGetBoolValue($this->config[self::$PAGE_HIDE_ORIGINALURL]);
         }
 
         if($this->config[self::$DIAGNOSTIC_STRING] == self::$DIAGNOSTIC_STRING_ENABLED) {
@@ -1284,20 +1295,14 @@ class IXFSDKUtils {
         return (bool) ($bit_field & $bit_mask);
     }
 
-    public static function getBooleanValue($string_value) {
-        if (!isset($string_value) || strlen($string_value)==0) {
-            return false;
-        }
-        $norm_string_value = strtolower($string_value);
-        $ret_value = ($norm_string_value == 'true' ? true : false);
-        if (!$ret_value) {
-            $ret_value = ($norm_string_value == 'on' ? true : false);
-        }
-        if (!$ret_value) {
-            $char_index_one = $norm_string_value[0];
-            $ret_value = ($char_index_one == '1' || $char_index_one == 't' ) ? true : false;
-        }
-        return $ret_value;
+    public static function validateGetBoolValue($val) {
+        if (!isset($val) || strlen($val) == 0) return false;
+
+        $normVal = strtolower($val);
+        if (in_array($normVal[0], array('1', 't'))) return true;
+        if (in_array($normVal, array( 'true', 'on' ))) return true;
+
+        return false;
     }
 
     public static function getSignedNumber($number) {
