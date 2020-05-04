@@ -291,16 +291,15 @@ class BEIXFClient implements BEIXFClientInterface {
         }
 
         if (isset($_GET["ixf-endpoint"]) && !empty($_GET["ixf-endpoint"])) {
-            $ixf_endpoint_url_parts = parse_url($_GET["ixf-endpoint"]);
-            if (isset($ixf_endpoint_url_parts['host'])
-                && preg_match(
-                    "^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
-                    $ixf_endpoint_url_parts['host'])
-                && preg_match(
-                    "/^(ixf.-api|api)\.(bc0a|brightedge)\.com$/",
-                    $ixf_endpoint_url_parts['host'])) {
-                $this->allowDirectApi = false;
-                $this->config[self::$API_ENDPOINT_CONFIG] = $_GET["ixf-endpoint"];
+            if (filter_var($_GET["ixf-endpoint"], FILTER_VALIDATE_URL)) {
+                $endpoint = parse_url($_GET["ixf-endpoint"]);
+                if (isset($endpoint['scheme'])
+                    && ($endpoint['scheme'] == "https" || $endpoint['scheme'] == "http")
+                    && isset($endpoint['host'])
+                    && preg_match("/^ixf.*-api\.bc0a\.com$/", $endpoint['host'])) {
+                    $this->allowDirectApi = false;
+                    $this->config[self::$API_ENDPOINT_CONFIG] = $_GET["ixf-endpoint"];
+                }
             }
         }
 

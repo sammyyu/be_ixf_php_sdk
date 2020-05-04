@@ -1,4 +1,6 @@
 <?php
+
+ini_set('display_errors', 'On');
 require 'be_ixf_client.php';
 use BrightEdge\BEIXFClient;
 
