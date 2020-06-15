@@ -135,7 +135,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.1";
+    public static $CLIENT_VERSION = "1.5.2";
 
     private static $API_VERSION = "1.0.0";
 
@@ -296,7 +296,10 @@ class BEIXFClient implements BEIXFClientInterface {
                 if (isset($endpoint['scheme'])
                     && ($endpoint['scheme'] == "https" || $endpoint['scheme'] == "http")
                     && isset($endpoint['host'])
-                    && preg_match("/^ixf.*-api\.bc0a\.com$/", $endpoint['host'])) {
+                    && (
+                        $endpoint['host'] == "api.brightedge.com"
+                        || preg_match("/^ixf.*-api\.bc0a\.com$/", $endpoint['host'])
+                    )) {
                     $this->allowDirectApi = false;
                     $this->config[self::$API_ENDPOINT_CONFIG] = $_GET["ixf-endpoint"];
                 }

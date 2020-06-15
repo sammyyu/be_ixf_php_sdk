@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [1.5.2] - 2020-06-15
+### Added
+- Support api.brightedge.com endpoint
+
 ## [1.5.1] - 2020-04-29
 ### Added
 - Add ixf-endpoint to URL parameters
