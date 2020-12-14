@@ -1,6 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+## [1.5.3] - 2020-12-14
+
+### Fixed
+
+- HTTP_HOST warning message
+- Remove proxy password
+
 ## [1.5.2] - 2020-06-15
 ### Added
 - Support api.brightedge.com endpoint

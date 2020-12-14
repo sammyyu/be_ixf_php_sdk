@@ -135,7 +135,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.2";
+    public static $CLIENT_VERSION = "1.5.3";
 
     private static $API_VERSION = "1.0.0";
 
@@ -183,6 +183,9 @@ class BEIXFClient implements BEIXFClientInterface {
      * @return object
      */
     public function __construct($params = array()) {
+        if (!isset($_SERVER['HTTP_HOST'])) {
+            exit;
+        }
         // config array, defaults are defined here.
         $this->config = array(
             self::$ENVIRONMENT_CONFIG => self::$ENVIRONMENT_PRODUCTION,
@@ -624,7 +627,6 @@ class BEIXFClient implements BEIXFClientInterface {
             "proxy_host" => isset($this->config[self::$PROXY_HOST_CONFIG]) ? $this->config[self::$PROXY_HOST_CONFIG] : "",
             "proxy_port" => $this->config[self::$PROXY_PORT_CONFIG],
             "proxy_usr" => isset($this->config[self::$PROXY_LOGIN_CONFIG]) ? $this->config[self::$PROXY_LOGIN_CONFIG] : "",
-            "proxy_pwd" => isset($this->config[self::$PROXY_PASSWORD_CONFIG]) ? $this->config[self::$PROXY_PASSWORD_CONFIG] : "",
             "socket_timeout" => $this->config[self::$SOCKET_TIMEOUT_CONFIG],
             "socket_timeout_crawler" => $this->config[self::$CRAWLER_SOCKET_TIMEOUT_CONFIG],
             "connection_timeout" => $this->config[self::$CONNECT_TIMEOUT_CONFIG],
