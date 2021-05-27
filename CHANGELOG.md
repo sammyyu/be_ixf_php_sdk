@@ -1,6 +1,12 @@
 # Changelog
 
 ## [Unreleased]
+## [1.5.4] - 2021-05-27
+
+### Update
+
+- Update default api endpoint
+
 ## [1.5.3] - 2020-12-14
 
 ### Fixed

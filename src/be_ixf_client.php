@@ -85,7 +85,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $DEFAULT_CHARSET = "UTF-8";
     public static $DEFAULT_DIRECT_API_ENDPOINT = "https://api.brightedge.com";
-    public static $DEFAULT_API_ENDPOINT = "https://ixfd-api.bc0a.com";
+    public static $DEFAULT_API_ENDPOINT = "https://ixfd1-api.bc0a.com";
     public static $DEFAULT_ACCOUNT_ID = "0";
 
     public static $DIAGNOSTIC_TYPE = "diagnostic.type";
@@ -135,7 +135,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.3";
+    public static $CLIENT_VERSION = "1.5.4";
 
     private static $API_VERSION = "1.0.0";
 
