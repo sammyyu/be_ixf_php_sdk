@@ -1,6 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.5.5] - 2022-02-10
+
+### Fixed
+
+- Drop parameters containing SQL queries
+
 ## [1.5.4] - 2021-05-27
 
 ### Update

@@ -135,7 +135,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.4";
+    public static $CLIENT_VERSION = "1.5.5";
 
     private static $API_VERSION = "1.0.0";
 
@@ -348,6 +348,7 @@ class BEIXFClient implements BEIXFClientInterface {
             }
         }
         $this->_original_url = ($is_https ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+        $this->_original_url = IXFSDKUtils::sanitizeURLToRemoveSQLQueries($this->_original_url);
         $this->_normalized_url = $this->_original_url;
 
         // #1 one construct the canonical URL
@@ -1294,6 +1295,23 @@ class Capsule {
 }
 
 class IXFSDKUtils {
+
+    public static $SQL_KEYS = array("union",
+                                    "information_schema",
+                                    "insert",
+                                    "update",
+                                    "delete",
+                                    "truncate",
+                                    "drop",
+                                    "reconfigure",
+                                    "sysobjects",
+                                    "waitfor",
+                                    "select",
+                                    "xp_cmdshell",
+                                    "from",
+                                    "where"
+                                );
+
     public static function isBitEnabled($bit_field, $bit) {
         $bit_mask = (1 << $bit);
         return (bool) ($bit_field & $bit_mask);
@@ -1432,6 +1450,72 @@ class IXFSDKUtils {
             }
         }
         return false;
+    }
+
+    /**
+     * function to check and remove and sql parameters present in the url
+     *
+     * @param string $url
+     * @return string sanitized url with no sql keys (if any)
+     */
+    public static function sanitizeURLToRemoveSQLQueries($url) {
+        $url_parts = parse_url($url);
+        $sanitized_url = $url_parts['scheme'] . '://' . $url_parts['host'];
+        if (isset($url_parts['port'])) {
+            if (!(($url_parts['scheme'] == 'http' && $url_parts['port'] == 80) ||
+                ($url_parts['scheme'] == 'https' && $url_parts['port'] == 443))) {
+                $sanitized_url .= ':' . $url_parts['port'];
+            }
+        }
+
+        if (isset($url_parts['path'])) {
+            $sanitized_url .= $url_parts['path'];
+        }
+        if (isset($url_parts['query'])) {
+            $query_string_keep = array();
+            $qs_array = self::proper_parse_str($url_parts['query']);
+            foreach ($qs_array as $key => $value) {
+                // check if $key is a SQL key
+                if ( !in_array(strtolower($key), self::$SQL_KEYS)) {
+                    $query_string_keep[$key] = $value;
+                }
+            }
+            if (count($query_string_keep) > 0) {
+                $sanitized_url .= "?";
+                $first = true;
+                foreach ($query_string_keep as $key => $value) {
+                    if (is_array($value)) {
+                        sort($value);
+                        foreach ($value as $value_scalar) {
+                            if (!$first) {
+                                $sanitized_url .= "&";
+                            }
+                            if (isset($value_scalar)) {
+                                $sanitized_url .= $key . "=" . $value_scalar;
+                            } else {
+                                $sanitized_url .= $key;
+                            }
+                            if ($first) {
+                                $first = false;
+                            }
+                        }
+                    } else {
+                        if (!$first) {
+                            $sanitized_url .= "&";
+                        }
+                        if (isset($value)) {
+                            $sanitized_url .= $key . "=" . $value;
+                        } else {
+                            $sanitized_url .= $key;
+                        }
+                    }
+                    if ($first) {
+                        $first = false;
+                    }
+                }
+            }
+        }
+        return $sanitized_url;
     }
 
     public static function normalizeURL($url, $whitelistParameters) {
