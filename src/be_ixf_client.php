@@ -135,7 +135,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.5";
+    public static $CLIENT_VERSION = "1.5.6";
 
     private static $API_VERSION = "1.0.0";
 
@@ -877,7 +877,9 @@ class BEIXFClient implements BEIXFClientInterface {
             return $hasContent;
         }
         if ($tagFormat !== self::$TAG_NONE) {
-            $sb = "\n<!-- be_ixf, " . $node_type .", " . $feature_group . " -->\n" . $sb;
+            if ($node_type != Node::$NODE_TYPE_BODYSTR || $this->debugMode) {
+                $sb = "\n<!-- be_ixf, " . $node_type .", " . $feature_group . " -->\n" . $sb;
+            }
         }
         return $sb;
     }

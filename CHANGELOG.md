@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.5.6] - 2022-04-27
+
+### Fixed
+
+- Remove output comment from SDK GetBodyString call()
+
 ## [1.5.5] - 2022-02-10
 
 ### Fixed
