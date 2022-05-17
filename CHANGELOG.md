@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.5.7] - 2022-06-22
+
+### Update
+
+- Added support for php8.x for date format
+
 ## [1.5.6] - 2022-04-27
 
 ### Fixed
