@@ -84,7 +84,7 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $ENVIRONMENT_TESTING = "testing";
 
     public static $DEFAULT_CHARSET = "UTF-8";
-    public static $DEFAULT_DIRECT_API_ENDPOINT = "https://api.brightedge.com";
+    public static $DEFAULT_DIRECT_API_ENDPOINT = "https://ixfd1-api.bc0a.com";
     public static $DEFAULT_API_ENDPOINT = "https://ixfd1-api.bc0a.com";
     public static $DEFAULT_ACCOUNT_ID = "0";
 
@@ -135,7 +135,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.7";
+    public static $CLIENT_VERSION = "1.5.8";
 
     private static $API_VERSION = "1.0.0";
 
@@ -300,7 +300,7 @@ class BEIXFClient implements BEIXFClientInterface {
                     && ($endpoint['scheme'] == "https" || $endpoint['scheme'] == "http")
                     && isset($endpoint['host'])
                     && (
-                        $endpoint['host'] == "api.brightedge.com"
+                        $endpoint['host'] == "ixfd1-api.bc0a.com"
                         || preg_match("/^ixf.*-api\.bc0a\.com$/", $endpoint['host'])
                     )) {
                     $this->allowDirectApi = false;
@@ -1292,7 +1292,7 @@ class Capsule {
      * @return string: "py_2019; pm_07; pd_26; ph_11; pmh_51; p_epoch:1564167114318"
      */
     public function getDatetimeStrFromMilSec($milSec) {
-        return date('p\y_Y;p\m_m;p\d_d;p\h_H;p\m\h_i;', $milSec/1000) . 'p_epoch:' . $milSec;
+        return date('p\y_Y;p\m_m;p\d_d;p\h_H;p\m\h_i;', intval($milSec/1000)) . 'p_epoch:' . $milSec;
     }
 }
 
@@ -1611,7 +1611,7 @@ class IXFSDKUtils {
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
             // $sb .= strftime("${prefix}y_%Y; ${prefix}m_%m; ${prefix}d_%d; ${prefix}h_%H; ${prefix}mh_%M; ", $epochTimeInMillis / 1000);
-            $sb .= date("${updated_prefix}\y_Y; ${updated_prefix}\m_m; ${updated_prefix}\d_d; ${updated_prefix}\h_H; ${updated_prefix}\m\h_i; ", $epochTimeInMillis / 1000);
+            $sb .= date("${updated_prefix}\y_Y; ${updated_prefix}\m_m; ${updated_prefix}\d_d; ${updated_prefix}\h_H; ${updated_prefix}\m\h_i; ", intval($epochTimeInMillis / 1000));
             $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
             return $sb;
         } finally {
@@ -1634,7 +1634,7 @@ class IXFSDKUtils {
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
             // $sb .= strftime("${prefix}ym_%Y%m ${prefix}d_%d; ", $epochTimeInMillis / 1000);
-            $sb .= date("${updated_prefix}\y\m_Ym ${updated_prefix}\d_d; ", $epochTimeInMillis / 1000);
+            $sb .= date("${updated_prefix}\y\m_Ym ${updated_prefix}\d_d; ", intval($epochTimeInMillis / 1000));
             $sb .= "${prefix}ct_" . IXFSDKUtils::roundUpElapsedTime($timer);
             return $sb;
         } finally {
@@ -1648,7 +1648,7 @@ class IXFSDKUtils {
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
             // $sb .= strftime("${prefix}_tstr:%a %b %d %H:%M:%S PST %Y; ", $epochTimeInMillis / 1000);
-            $sb .= "${prefix}_" . date("\\t\\s\\t\\r:D M d H:i:s \P\S\T Y; ", $epochTimeInMillis / 1000);
+            $sb .= "${prefix}_" . date("\\t\\s\\t\\r:D M d H:i:s \P\S\T Y; ", intval($epochTimeInMillis / 1000));
             $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
             return $sb;
         } finally {

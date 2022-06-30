@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.5.8] - 2022-07-07
+
+### Update
+
+- Update default direct api endpoint and rectify deprecation warning related to Implicit conversion from float to int
 ## [1.5.7] - 2022-06-22
 
 ### Update

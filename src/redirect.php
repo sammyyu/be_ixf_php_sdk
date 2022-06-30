@@ -3,7 +3,7 @@ require 'be_ixf_client.php';
 use BrightEdge\BEIXFClient;
 
 $be_ixf_config = array(
-    BEIXFClient::$API_ENDPOINT_CONFIG => 'https://api.brightedge.com',
+    BEIXFClient::$API_ENDPOINT_CONFIG => 'https://ixfd1-api.bc0a.com',
 );
 $be_ixf = new BEIXFClient($be_ixf_config);
 ?>
