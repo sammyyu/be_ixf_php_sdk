@@ -135,7 +135,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.8";
+    public static $CLIENT_VERSION = "1.5.9";
 
     private static $API_VERSION = "1.0.0";
 
@@ -461,9 +461,6 @@ class BEIXFClient implements BEIXFClientInterface {
             curl_setopt($ch, CURLOPT_HEADER, 0);
             // Should cURL return or print out the data? (true = return, false = print)
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            // disable SSL certificate check
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
             // connect timeout in milliseconds
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $connect_timeout);
             // overall timeout in seconds

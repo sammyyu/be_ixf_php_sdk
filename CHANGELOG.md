@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.5.9] - 2022-09-29
+
+### Update
+
+- Use default value (2) of CURLOPT_SSL_VERIFYHOST to check the SSL
 ## [1.5.8] - 2022-07-07
 
 ### Update
