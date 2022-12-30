@@ -98,6 +98,7 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $DIAGNOSTIC_STRING_ENABLED = true;
     public static $DIAGNOSTIC_STRING_DISABLED = false;
 
+    public static $ALLOW_DEBUG_MODE_CONFIG = 'allow_debug';
     public static $ALLOW_DEBUG_MODE = true;
 
 
@@ -135,7 +136,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.9";
+    public static $CLIENT_VERSION = "1.5.10";
 
     private static $API_VERSION = "1.0.0";
 
@@ -229,6 +230,10 @@ class BEIXFClient implements BEIXFClientInterface {
 
         // Merge passed in params with defaults for config.
         $this->config = array_merge($this->config, $params);
+
+        if (isset($this->config[self::$ALLOW_DEBUG_MODE_CONFIG])) {
+            self::$ALLOW_DEBUG_MODE = $this->config[self::$ALLOW_DEBUG_MODE_CONFIG];
+        }
 
         if (isset($this->config[self::$CAPSULE_MODE_CONFIG])) {
             $capsuleMode = $this->config[self::$CAPSULE_MODE_CONFIG];

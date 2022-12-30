@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.5.10] - 2022-12-30
+
+### Update
+
+- Allow configuration of debug mode using $ALLOW_DEBUG_MODE_CONFIG
+- example usecase: $be_ixf_config[BEIXFClient::$ALLOW_DEBUG_MODE_CONFIG] = false;
 ## [1.5.9] - 2022-09-29
 
 ### Update
