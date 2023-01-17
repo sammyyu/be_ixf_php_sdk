@@ -1292,7 +1292,7 @@ class Capsule {
      * @return string: "py_2019; pm_07; pd_26; ph_11; pmh_51; p_epoch:1564167114318"
      */
     public function getDatetimeStrFromMilSec($milSec) {
-        return date('p\y_Y;p\m_m;p\d_d;p\h_H;p\m\h_i;', $milSec/1000) . 'p_epoch:' . $milSec;
+        return date('p\y_Y;p\m_m;p\d_d;p\h_H;p\m\h_i;', intval($milSec/1000)) . 'p_epoch:' . $milSec;
     }
 }
 
@@ -1635,7 +1635,7 @@ class IXFSDKUtils {
         $current_timezone = @date_default_timezone_get();
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
-            $sb .= strftime("${prefix}_tstr:%a %b %d %H:%M:%S PST %Y; ", $epochTimeInMillis / 1000);
+            $sb .= date("${prefix}_tstr:%a %b %d %H:%M:%S PST %Y; ", intval($epochTimeInMillis / 1000));
             $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
             return $sb;
         } finally {
