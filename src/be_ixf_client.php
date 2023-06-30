@@ -31,6 +31,8 @@ interface BEIXFClientInterface {
 
 }
 
+// added to suppor drupal 10 / php 8.2
+#[\AllowDynamicProperties]
 class BEIXFClient implements BEIXFClientInterface {
     public static $ENVIRONMENT_CONFIG = "sdk.environment";
     public static $CHARSET_CONFIG = "sdk.charset";
@@ -136,7 +138,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.10";
+    public static $CLIENT_VERSION = "1.5.11";
 
     private static $API_VERSION = "1.0.0";
 
