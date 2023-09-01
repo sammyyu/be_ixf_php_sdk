@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.5.12] - 2023-09-01
+
+### Update
+
+- Fixed deprecated variables in PHP 8.2
+
 ## [1.5.11] - 2023-06-30
 
 ### Update

@@ -138,7 +138,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.11";
+    public static $CLIENT_VERSION = "1.5.12";
 
     private static $API_VERSION = "1.0.0";
 
@@ -1615,8 +1615,8 @@ class IXFSDKUtils {
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
             // $sb .= strftime("${prefix}y_%Y; ${prefix}m_%m; ${prefix}d_%d; ${prefix}h_%H; ${prefix}mh_%M; ", $epochTimeInMillis / 1000);
-            $sb .= date("${updated_prefix}\y_Y; ${updated_prefix}\m_m; ${updated_prefix}\d_d; ${updated_prefix}\h_H; ${updated_prefix}\m\h_i; ", intval($epochTimeInMillis / 1000));
-            $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
+            $sb .= date("{$updated_prefix}\y_Y; {$updated_prefix}\m_m; {$updated_prefix}\d_d; {$updated_prefix}\h_H; {$updated_prefix}\m\h_i; ", intval($epochTimeInMillis / 1000));
+            $sb .= "{$prefix}_epoch:" . $epochTimeInMillis;
             return $sb;
         } finally {
             date_default_timezone_set($current_timezone);
@@ -1638,8 +1638,8 @@ class IXFSDKUtils {
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
             // $sb .= strftime("${prefix}ym_%Y%m ${prefix}d_%d; ", $epochTimeInMillis / 1000);
-            $sb .= date("${updated_prefix}\y\m_Ym ${updated_prefix}\d_d; ", intval($epochTimeInMillis / 1000));
-            $sb .= "${prefix}ct_" . IXFSDKUtils::roundUpElapsedTime($timer);
+            $sb .= date("{$updated_prefix}\y\m_Ym {$updated_prefix}\d_d; ", intval($epochTimeInMillis / 1000));
+            $sb .= "{$prefix}ct_" . IXFSDKUtils::roundUpElapsedTime($timer);
             return $sb;
         } finally {
             date_default_timezone_set($current_timezone);
@@ -1652,8 +1652,8 @@ class IXFSDKUtils {
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
             // $sb .= strftime("${prefix}_tstr:%a %b %d %H:%M:%S PST %Y; ", $epochTimeInMillis / 1000);
-            $sb .= "${prefix}_" . date("\\t\\s\\t\\r:D M d H:i:s \P\S\T Y; ", intval($epochTimeInMillis / 1000));
-            $sb .= "${prefix}_epoch:" . $epochTimeInMillis;
+            $sb .= "{$prefix}_" . date("\\t\\s\\t\\r:D M d H:i:s \P\S\T Y; ", intval($epochTimeInMillis / 1000));
+            $sb .= "{$prefix}_epoch:" . $epochTimeInMillis;
             return $sb;
         } finally {
             date_default_timezone_set($current_timezone);
