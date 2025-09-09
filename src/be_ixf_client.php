@@ -8,7 +8,8 @@ namespace BrightEdge;
  *
  */
 
-interface BEIXFClientInterface {
+interface BEIXFClientInterface
+{
     public function close();
 
     public function getHeadOpen();
@@ -33,7 +34,8 @@ interface BEIXFClientInterface {
 
 // added to suppor drupal 10 / php 8.2
 #[\AllowDynamicProperties]
-class BEIXFClient implements BEIXFClientInterface {
+class BEIXFClient implements BEIXFClientInterface
+{
     public static $ENVIRONMENT_CONFIG = "sdk.environment";
     public static $CHARSET_CONFIG = "sdk.charset";
     public static $API_ENDPOINT_CONFIG = "api.endpoint";
@@ -49,7 +51,6 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $PROXY_PASSWORD_CONFIG = "sdk.proxyPassword";
     public static $WHITELIST_PARAMETER_LIST_CONFIG = "whitelist.parameter.list";
     public static $FORCEDIRECTAPI_PARAMETER_LIST_CONFIG = "forcedirectapi.parameter.list";
-    public static $FLAT_FILE_FOR_TEST_MODE_CONFIG = "flat.file";
     public static $PAGE_INDEPENDENT_MODE_CONFIG = "page.independent";
     public static $CRAWLER_USER_AGENTS_CONFIG = "crawler.useragents";
     // this is for short hand mode
@@ -72,22 +73,18 @@ class BEIXFClient implements BEIXFClientInterface {
     public static $REMOTE_STAGING_CAPSULE_MODE = "remote.staging.capsule";
     // env = staging, page_independent = true
     public static $REMOTE_STAGING_GLOBAL_CAPSULE_MODE = "remote.staging.global.capsule";
-    // env = testing, page_independent = false, flat_file = false
-    public static $LOCAL_CAPSULE_MODE = "local.capsule";
-    // env = testing, page_independent = false, flat_file = true
-    public static $LOCAL_FLAT_FILE_CAPSULE_MODE = "local.flatfile.capsule";
-    // env = testing, page_independent = true, flat_file = false
-    public static $LOCAL_GLOBAL_CAPSULE_MODE = "local.global.capsule";
-    // env = testing, page_independent = true, flat_file = true
-    public static $LOCAL_GLOBAL_FLAT_FILE_CAPSULE_MODE = "local.global.flatfile.capsule";
 
     public static $ENVIRONMENT_PRODUCTION = "production";
     public static $ENVIRONMENT_STAGING = "staging";
     public static $ENVIRONMENT_TESTING = "testing";
 
+    // Enable storage capsule for SCP 2.0
+    public static $ENABLE_STORAGE_CAPSULE = false;
+
     public static $DEFAULT_CHARSET = "UTF-8";
     public static $DEFAULT_DIRECT_API_ENDPOINT = "https://ixfd1-api.bc0a.com";
     public static $DEFAULT_API_ENDPOINT = "https://ixfd1-api.bc0a.com";
+    public static $DEFAULT_STORAGE_CAPSULE_API_ENDPOINT = "https://ixfc0-api.bc0a.com";
     public static $DEFAULT_ACCOUNT_ID = "0";
 
     public static $DIAGNOSTIC_TYPE = "diagnostic.type";
@@ -138,7 +135,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
     public static $PRODUCT_NAME = "be_ixf";
     public static $CLIENT_NAME = "php_sdk";
-    public static $CLIENT_VERSION = "1.5.12";
+    public static $CLIENT_VERSION = "1.5.15";
 
     private static $API_VERSION = "1.0.0";
 
@@ -153,6 +150,11 @@ class BEIXFClient implements BEIXFClientInterface {
     private $displayCapsuleUrl = null;
     private $capsule = null;
     private $_capsule_response = null;
+
+    // Static cache for default capsule to avoid repeated requests
+    private static $defaultCapsuleCache = null;
+    private static $defaultCapsuleCacheTime = 0;
+    private static $defaultCapsuleCacheExpiry = 21600; // 6 hour cache
 
     private $allowDirectApi = true;
     private $debugMode = false;
@@ -179,20 +181,80 @@ class BEIXFClient implements BEIXFClientInterface {
     protected $profileHistory = array();
 
     /**
+     * Fetch default capsule and cache the response
+     *
+     * @param string $defaultUrl The default capsule API URL
+     * @param int $connect_timeout Connection timeout
+     * @param int $socket_timeout Socket timeout
+     * @return array|null Response array or null if failed
+     */
+    private function fetchDefaultCapsuleWithCache($defaultUrl, $connect_timeout, $socket_timeout) {
+        $currentTime = time();
+
+        // Check if we have a valid cached response
+        if (self::$defaultCapsuleCache !== null &&
+            ($currentTime - self::$defaultCapsuleCacheTime) < self::$defaultCapsuleCacheExpiry) {
+            return self::$defaultCapsuleCache;
+        }
+
+        // Fetch fresh default capsule
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $defaultUrl);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $connect_timeout);
+        curl_setopt($ch, CURLOPT_TIMEOUT_MS, $socket_timeout);
+        curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+        if (isset($this->config[self::$PROXY_HOST_CONFIG])) {
+            curl_setopt($ch, CURLOPT_PROXY, $this->config[self::$PROXY_HOST_CONFIG]);
+            curl_setopt($ch, CURLOPT_PROXYPORT, $this->config[self::$PROXY_PORT_CONFIG]);
+            if (isset($this->config[self::$PROXY_LOGIN_CONFIG])) {
+                curl_setopt($ch, CURLOPT_PROXYUSERPWD, $this->config[self::$PROXY_LOGIN_CONFIG] . ":" . $this->config[self::$PROXY_PASSWORD_CONFIG]);
+            }
+        }
+
+        $request = array(
+            'response' => curl_exec($ch),
+            'info' => curl_getinfo($ch),
+            'error_number' => curl_errno($ch),
+            'error_message' => curl_error($ch),
+        );
+
+        curl_close($ch);
+
+        // Cache the response if successful
+        if ($request['error_number'] == 0 && $request['info']['http_code'] == 200) {
+            self::$defaultCapsuleCache = $request;
+            self::$defaultCapsuleCacheTime = $currentTime;
+        }
+
+        return $request;
+    }
+
+
+    /**
      * Instantiate IXF Client using a parameter array
      *
      * @access public
      * @param array of configuration key, value pairs.  sdk.account is required
      * @return object
      */
-    public function __construct($params = array()) {
+    public function __construct($params = array())
+    {
         if (!isset($_SERVER['HTTP_HOST'])) {
-            exit;
+            throw new \RuntimeException('HTTP_HOST is not set.');
         }
+        // Assign enable_storage_capsule from config params if provided.
+        if (isset($params['enable_storage_capsule']) && !empty($params['enable_storage_capsule'])) {
+            self::$ENABLE_STORAGE_CAPSULE = $params['enable_storage_capsule'];
+        }
+
         // config array, defaults are defined here.
         $this->config = array(
             self::$ENVIRONMENT_CONFIG => self::$ENVIRONMENT_PRODUCTION,
-            self::$API_ENDPOINT_CONFIG => self::$DEFAULT_API_ENDPOINT,
+            self::$API_ENDPOINT_CONFIG => self::$ENABLE_STORAGE_CAPSULE ? self::$DEFAULT_STORAGE_CAPSULE_API_ENDPOINT : self::$DEFAULT_API_ENDPOINT,
             self::$CHARSET_CONFIG => self::$DEFAULT_CHARSET,
             self::$ACCOUNT_ID_CONFIG => self::$DEFAULT_ACCOUNT_ID,
             self::$CONNECT_TIMEOUT_CONFIG => self::$DEFAULT_CONNECT_TIMEOUT,
@@ -201,7 +263,6 @@ class BEIXFClient implements BEIXFClientInterface {
             self::$CRAWLER_SOCKET_TIMEOUT_CONFIG => self::$DEFAULT_CRAWLER_SOCKET_TIMEOUT,
             self::$WHITELIST_PARAMETER_LIST_CONFIG => self::$DEFAULT_WHITELIST_PARAMETER_LIST,
             self::$FORCEDIRECTAPI_PARAMETER_LIST_CONFIG => self::$DEFAULT_FORCEDIRECTAPI_PARAMETER_LIST,
-            self::$FLAT_FILE_FOR_TEST_MODE_CONFIG => "true",
             self::$PROXY_PORT_CONFIG => self::$DEFAULT_PROXY_PORT,
             self::$PROXY_PROTOCOL_CONFIG => self::$DEFAULT_PROXY_PROTOCOL,
             self::$CRAWLER_USER_AGENTS_CONFIG => self::$DEFAULT_CRAWLER_USER_AGENTS,
@@ -217,9 +278,10 @@ class BEIXFClient implements BEIXFClientInterface {
             while (!feof($ini_file)) {
                 $line = fgets($ini_file);
                 $line = trim($line);
-                if (strlen($line)==0 || $line[0]==';' || $line[0] == '#') {
+                if (strlen($line) == 0 || $line[0] == ';' || $line[0] == '#') {
                     continue;
                 }
+
                 $parts = explode("=", $line, 2);
                 if (count($parts) == 2) {
                     $key = trim($parts[0]);
@@ -227,6 +289,7 @@ class BEIXFClient implements BEIXFClientInterface {
                     $this->config[$key] = $value;
                 }
             }
+
             fclose($ini_file);
         }
 
@@ -255,31 +318,6 @@ class BEIXFClient implements BEIXFClientInterface {
                 // env = staging, page_independent = true
                 $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_STAGING;
                 $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "true";
-            } else if ($capsuleMode == self::$LOCAL_CAPSULE_MODE) {
-                // env = testing, page_independent = false, flat_file = false
-                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_TESTING;
-                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "false";
-                $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] = "false";
-            } else if ($capsuleMode == self::$LOCAL_FLAT_FILE_CAPSULE_MODE) {
-                // env = testing, page_independent = false, flat_file = true
-                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_TESTING;
-                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "false";
-                $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] = "true";
-            } else if ($capsuleMode == self::$LOCAL_FLAT_FILE_CAPSULE_MODE) {
-                // env = testing, page_independent = false, flat_file = true
-                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_TESTING;
-                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "false";
-                $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] = "true";
-            } else if ($capsuleMode == self::$LOCAL_GLOBAL_CAPSULE_MODE) {
-                // env = testing, page_independent = true, flat_file = false
-                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_TESTING;
-                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "true";
-                $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] = "false";
-            } else if ($capsuleMode == self::$LOCAL_GLOBAL_FLAT_FILE_CAPSULE_MODE) {
-                // env = testing, page_independent = true, flat_file = true
-                $this->config[self::$ENVIRONMENT_CONFIG] = self::$ENVIRONMENT_TESTING;
-                $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] = "true";
-                $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] = "true";
             }
         }
 
@@ -329,14 +367,16 @@ class BEIXFClient implements BEIXFClientInterface {
             $connect_timeout = $this->config[self::$CRAWLER_CONNECT_TIMEOUT_CONFIG];
             $socket_timeout = $this->config[self::$CRAWLER_SOCKET_TIMEOUT_CONFIG];
         }
+
         // set timeout be at least 1000ms
-        if($connect_timeout<1000) {
+        if ($connect_timeout < 1000) {
             $connect_timeout = 1000;
-            array_push($this->errorMessages,'connect_timeout cannot be less than 1000ms. Defaulting timeout to 1000 ms');
+            array_push($this->errorMessages, 'connect_timeout cannot be less than 1000ms. Defaulting timeout to 1000 ms');
         }
-        if($socket_timeout<1000) {
+
+        if ($socket_timeout < 1000) {
             $socket_timeout = 1000;
-            array_push($this->errorMessages,'socket_timeout cannot be less than 1000ms. Defaulting timeout to 1000 ms');
+            array_push($this->errorMessages, 'socket_timeout cannot be less than 1000ms. Defaulting timeout to 1000 ms');
         }
 
         $is_https = isset($_SERVER['HTTPS']);
@@ -344,16 +384,19 @@ class BEIXFClient implements BEIXFClientInterface {
         if (!$is_https && isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) {
             $is_https = true;
         }
+
         // Check external protocol settings to determine the external URL
         if (!$is_https && isset($_SERVER['X-FORWARDED-PROTO']) && $_SERVER['X-FORWARDED-PROTO'] == 'https') {
             $is_https = true;
         }
+
         // check if canonical host is set as https
         if (isset($this->config[self::$CANONICAL_PROTOCOL_CONFIG])) {
             if ($this->config[self::$CANONICAL_PROTOCOL_CONFIG] == self::$CANONICAL_PROTOCOL_HTTPS) {
                 $is_https = true;
             }
         }
+
         $this->_original_url = ($is_https ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
         $this->_original_url = IXFSDKUtils::sanitizeURLToRemoveSQLQueries($this->_original_url);
         $this->_normalized_url = $this->_original_url;
@@ -365,6 +408,7 @@ class BEIXFClient implements BEIXFClientInterface {
         } else if (isset($this->config[self::$CANONICAL_PAGE_CONFIG])) {
             $this->_normalized_url = $this->config[self::$CANONICAL_PAGE_CONFIG];
         }
+
         if (isset($this->config[self::$CANONICAL_HOST_CONFIG]) || isset($this->config[self::$CANONICAL_PROTOCOL_CONFIG])) {
             $canonicalProtocol = isset($this->config[self::$CANONICAL_PROTOCOL_CONFIG]) ? $this->config[self::$CANONICAL_PROTOCOL_CONFIG] : null;
             $canonicalHost = isset($this->config[self::$CANONICAL_HOST_CONFIG]) ? $this->config[self::$CANONICAL_HOST_CONFIG] : null;
@@ -372,14 +416,20 @@ class BEIXFClient implements BEIXFClientInterface {
         }
 
         // #2 normalize the URL
-        $whitelistParameters = explode("|", $this->config[self::$WHITELIST_PARAMETER_LIST_CONFIG]);
-        $forceDirectApiParameters = explode("|", $this->config[self::$FORCEDIRECTAPI_PARAMETER_LIST_CONFIG]);
+        $whitelistParameters = !empty($this->config[self::$WHITELIST_PARAMETER_LIST_CONFIG])
+            ? explode("|", $this->config[self::$WHITELIST_PARAMETER_LIST_CONFIG])
+            : array();
+
+        $forceDirectApiParameters = !empty($this->config[self::$FORCEDIRECTAPI_PARAMETER_LIST_CONFIG])
+            ? explode("|", $this->config[self::$FORCEDIRECTAPI_PARAMETER_LIST_CONFIG])
+            : array();
+
         // force direct and whitelist are automatically whitelisted urls
         $this->_normalized_url = IXFSDKUtils::normalizeURL($this->_normalized_url, array_merge($whitelistParameters, $forceDirectApiParameters));
 
         $parameter_in_url = IXFSDKUtils::parametersInURL($this->_normalized_url, $forceDirectApiParameters);
         if ($parameter_in_url && $this->allowDirectApi) {
-            $this->config[self::$API_ENDPOINT_CONFIG] = self::$DEFAULT_DIRECT_API_ENDPOINT;
+            $this->config[self::$API_ENDPOINT_CONFIG] = self::$ENABLE_STORAGE_CAPSULE ? self::$DEFAULT_STORAGE_CAPSULE_API_ENDPOINT : self::$DEFAULT_DIRECT_API_ENDPOINT;
         }
 
 
@@ -416,6 +466,15 @@ class BEIXFClient implements BEIXFClientInterface {
             . '?'
             . http_build_query($request_params);
 
+        // Default Account Capsule URL for SCP 2.0
+        $this->_get_account_default_capsule_api_url = $urlBase
+            . 'api/ixf/'
+            . self::$API_VERSION . '/'
+            . $get_capsule_api_call_name . '/'
+            . $this->config[self::$ACCOUNT_ID_CONFIG] . '/'
+            . 'default.json?'
+            . http_build_query($request_params);
+
         $this->displayCapsuleUrl = $urlBase
             . 'api/ixf/'
             . self::$API_VERSION . '/'
@@ -425,41 +484,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
         $startTime = round(microtime(true) * 1000);
 
-        if ($this->isLocalContentMode()) {
-            if (!$this->useFlatFileForLocalFile()) {
-                if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
-                    $capsule_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
-                            "local_content", "global", "capsule.json"));
-                    // if capsule doesn't exist load global one
-                    if (!file_exists($capsule_resource_file)) {
-                        $capsule_resource_file = join(DIRECTORY_SEPARATOR,
-                            array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
-                                "local_content", "global", "brightedge_capsule.json"));
-                    }
-                } else {
-                    $page_path_for_local_path = $this->convertPagePathToLocalPath($this->_normalized_url);
-                    $capsule_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
-                            "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
-                            "capsule.json"));
-
-                }
-                if (!file_exists($capsule_resource_file)) {
-                    array_push($this->errorMessages,
-                        'capsule file=' . $capsule_resource_file . " doesn't exist.");
-                } else {
-                    $this->_capsule_response = file_get_contents($capsule_resource_file);
-                    $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_original_url, $this->_normalized_url,
-                        $this->client_user_agent);
-                    if ($this->capsule == NULL) {
-                        array_push($this->errorMessages,
-                            'capsule file=' . $capsule_resource_file . " is not valid JSON");
-                    }
-                }
-            }
-
-        } else {
+        if (isset($this->_get_capsule_api_url)) {
             $ch = curl_init();
 
             // Set URL to download
@@ -500,38 +525,64 @@ class BEIXFClient implements BEIXFClientInterface {
 
             // see if we got any errors with the connection
             if ($request['error_number'] != 0) {
-                array_push($this->errorMessages,
-                    'API request error=' . $request['error_message'] . ", capsule_url=" . $this->_get_capsule_api_url);
+                array_push(
+                    $this->errorMessages,
+                    'API request error=' . $request['error_message'] . ", capsule_url=" . $this->_get_capsule_api_url
+                );
             }
 
             // see if we got a status code of something other than 200
             if ($request['info']['http_code'] != 200) {
                 if ($request['info']['http_code'] == 400) {
-                    array_push($this->errorMessages,
+                    array_push(
+                        $this->errorMessages,
                         'API get capsule error, http_status=' . $request['info']['http_code'] .
                         " likely capsule is missing, payload=" . $request['response'] .
-                        ", capsule_url=" . $this->_get_capsule_api_url);
+                        ", capsule_url=" . $this->_get_capsule_api_url
+                    );
                     $this->capsule = null;
                     // make it easier to read out in debug
                     $this->_capsule_response = $request['response'];
-
                 } else {
-                    array_push($this->errorMessages,
+                    array_push(
+                        $this->errorMessages,
                         'API request invalid HTTP status=' . $request['info']['http_code'] .
-                        ", capsule_url=" . $this->_get_capsule_api_url);
+                        ", capsule_url=" . $this->_get_capsule_api_url
+                    );
                 }
 
             } else {
                 // successful request parse out capsule
                 $this->_capsule_response = $request['response'];
+
+                if (self::$ENABLE_STORAGE_CAPSULE) {
+                    // Check if account_id is 0, which indicates we need to use account default capsule
+                    $responseData = json_decode($this->_capsule_response, true);
+                    if ($responseData && isset($responseData['account_id']) && $responseData['account_id'] == 0) {
+                        // Fetch default capsule
+                        $defaultRequest = $this->fetchDefaultCapsuleWithCache($this->_get_account_default_capsule_api_url, $connect_timeout, $socket_timeout);
+
+                        if ($defaultRequest['error_number'] == 0 && $defaultRequest['info']['http_code'] == 200) {
+                            $this->_capsule_response = $defaultRequest['response'];
+                            // Update displayCapsuleUrl to use account default capsule
+                            $this->displayCapsuleUrl = preg_replace('/\?.*$/', '', $this->_get_account_default_capsule_api_url);
+                        } else {
+                            array_push($this->errorMessages, 'Failed to fetch default capsule: ' . $defaultRequest['error_message']);
+                        }
+                    }
+                }
+
                 // normalized url
                 $this->capsule = buildCapsuleWrapper($this->_capsule_response, $this->_original_url, $this->_normalized_url, $this->client_user_agent);
                 if ($this->capsule == NULL) {
-                    array_push($this->errorMessages,
-                        'capsule url=' . $this->_get_capsule_api_url . " is not valid JSON");
+                    array_push(
+                        $this->errorMessages,
+                        'capsule url=' . $this->_get_capsule_api_url . " is not valid JSON"
+                    );
                 }
             }
         }
+
         $this->connectTime = round(microtime(true) * 1000) - $startTime;
         $this->addtoProfileHistory("constructor", $this->connectTime);
         // placed here so we can drop the redirection as early as possible
@@ -540,14 +591,16 @@ class BEIXFClient implements BEIXFClientInterface {
         }
     }
 
-    protected function generateEndingTags($blockType,
-                                          $node_type,
-                                          $publishingEngine,
-                                          $engineVersion,
-                                          $metaString,
-                                          $publishedTimeEpochMilliseconds,
-                                          $elapsedTime,
-                                          $tagFormat) {
+    protected function generateEndingTags(
+        $blockType,
+        $node_type,
+        $publishingEngine,
+        $engineVersion,
+        $metaString,
+        $publishedTimeEpochMilliseconds,
+        $elapsedTime,
+        $tagFormat
+) {
         $sb = "";
         if ($blockType == self::$CLOSE_BLOCKTYPE) {
             $sb .= "\n<!-- be_ixf, sdk, is -->\n";
@@ -557,6 +610,7 @@ class BEIXFClient implements BEIXFClientInterface {
                 if ($this->capsule != null) {
                     $sb .= "<li id=\"be_sdkms_page_group\">" . print_r($this->capsule->getPageGroup(), true) . "</li>\n";
                 }
+
                 $sb .= "<li id=\"be_sdkms_configuration\">" . print_r($this->config, true) . "</li>\n";
                 # chrome complains about <script> in cdata and //
                 $normalized_response = str_replace("<script>", "&lt;script&gt;", $this->_capsule_response);
@@ -568,6 +622,7 @@ class BEIXFClient implements BEIXFClientInterface {
                     $itemTime = $itemArray[1];
                     $sb .= "<li id=\"" . $itemName . "\">" . $itemTime . "</li>\n";
                 }
+
                 $sb .= "</ul>\n";
 
                 $sb .= "</ul>\n";
@@ -595,12 +650,14 @@ class BEIXFClient implements BEIXFClientInterface {
 
                 $sb .= "</ul>\n";
             }
+
             // node information
             $publisherLine = $publishingEngine . "; ";
             $publisherLine .= $publishingEngine . "_" . $engineVersion . "; " . $node_type;
             if ($metaString != null) {
                 $publisherLine .= "; " . $metaString;
             }
+
             if ($tagFormat === self::$TAG_COMMENT) {
                 $sb .= "<!--\n";
                 $sb .= "   be_sdkms_pub: " . $publisherLine . ";\n";
@@ -615,13 +672,15 @@ class BEIXFClient implements BEIXFClientInterface {
                 $sb .= "</ul>\n";
             }
         }
+
         return $sb;
     }
 
     /**
      * This function returns the diagnostic JSON string.
      */
-    protected function getDiagStringJSON() {
+    protected function getDiagStringJSON()
+    {
         $config = array(
             "account_id" => $this->config[self::$ACCOUNT_ID_CONFIG],
             "api_endpoint" => $this->config[self::$API_ENDPOINT_CONFIG],
@@ -639,7 +698,6 @@ class BEIXFClient implements BEIXFClientInterface {
             "charset" => $this->config[self::$CHARSET_CONFIG],
             "force_direct_api_params" => $this->config[self::$FORCEDIRECTAPI_PARAMETER_LIST_CONFIG],
             "page_independent" => isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) ? $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] : "",
-            "flat_file" => $this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG],
             "environment" => $this->config[self::$ENVIRONMENT_CONFIG],
             "capsule_mode" => isset($this->config[self::$CAPSULE_MODE_CONFIG]) ? $this->config[self::$CAPSULE_MODE_CONFIG] : "",
         );
@@ -676,6 +734,7 @@ class BEIXFClient implements BEIXFClientInterface {
 
             $diag_string_arr["capsule"] = array("mod_dt" => $api_published_date, "mod_dt_epoch" => $api_published_epoch_time);
         }
+
         $diag_string_arr["timer"] = $this->connectTime;
         $diag_string_arr["messages"] = $this->errorMessages;
 
@@ -686,22 +745,37 @@ class BEIXFClient implements BEIXFClientInterface {
      * This function returns the AES Encryption of the payload.
      * This is used to return encrypt string of diagString
      */
-    protected function getAESEncryption($data){
+    protected function getAESEncryption($data)
+    {
         $cipher = self::$ENCRYPTION_CIPHER;
-        $key = $this->config[self::$ACCOUNT_ID_CONFIG];
+
+        // More robust key handling
+        $key = '';
+        if (isset($this->config[self::$ACCOUNT_ID_CONFIG])) {
+            $key = (string)$this->config[self::$ACCOUNT_ID_CONFIG];
+            // Additional check to ensure key isn't 'null' string or only whitespace
+            $key = trim($key);
+        }
+
+        // Validate key is not empty
+        if (empty($key)) {
+            // Handle missing key - could throw exception or return unencrypted data
+            return base64_encode($data);
+        }
 
         $ivlen = openssl_cipher_iv_length($cipher);
         $iv = openssl_random_pseudo_bytes($ivlen);
-        $cipher_text_raw = openssl_encrypt($data, $cipher, $key, $options = OPENSSL_RAW_DATA, $iv);
+        $cipher_text_raw = openssl_encrypt($data, $cipher, $key, OPENSSL_RAW_DATA, $iv);
         $hmac = hash_hmac('sha256', $cipher_text_raw, $key, $as_binary = true);
 
-        return  base64_encode($iv . $hmac . $cipher_text_raw);
+        return base64_encode($iv . $hmac . $cipher_text_raw);
     }
 
     /**
      * This function returns the headopen diagnostic string.
      */
-    protected function getHeadOpenDiagString() {
+    protected function getHeadOpenDiagString()
+    {
         $sb = "\n<!-- be_ixf, sdk, gho-->";
         $pageHideOriginalUrl = false;
         if (isset($this->config[self::$PAGE_HIDE_ORIGINALURL]) && !$this->debugMode) {
@@ -721,6 +795,7 @@ class BEIXFClient implements BEIXFClientInterface {
         if (!$pageHideOriginalUrl) {
             $sb .= "\n<meta name=\"be:orig_url\" content=\"" . urlencode($this->_original_url) . "\" />";
         }
+
         $sb .= "\n<meta name=\"be:norm_url\" content=\"" . urlencode($this->_normalized_url) . "\" />";
         //added capsule url originally missing
         $sb .= "\n<meta name=\"be:capsule_url\" content=\"" . urlencode($this->displayCapsuleUrl) . "\" />";
@@ -737,40 +812,27 @@ class BEIXFClient implements BEIXFClientInterface {
         return $sb;
     }
 
-    public function isLocalContentMode() {
-        if ($this->config[self::$ENVIRONMENT_CONFIG] == self::$ENVIRONMENT_TESTING) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * @return whether we should use flat file for test mode
-     */
-    public function useFlatFileForLocalFile() {
-        if ($this->config[self::$FLAT_FILE_FOR_TEST_MODE_CONFIG] == "true") {
-            return true;
-        }
-        return false;
-    }
-
-    public function addtoProfileHistory($item, $elapsedTime) {
+    public function addtoProfileHistory($item, $elapsedTime)
+    {
         array_push($this->profileHistory, array($item, $elapsedTime));
     }
 
-    public function convertPagePathToLocalPath($url) {
+    public function convertPagePathToLocalPath($url)
+    {
         $page_path = parse_url($url)['path'];
         // convert / to \ on Windows so we can load the file up
         if (DIRECTORY_SEPARATOR == '\\') {
             $page_path = str_replace('/', DIRECTORY_SEPARATOR, $page_path);
         }
+
         return $page_path;
     }
 
     /**
      * Return the capsule API URL
      */
-    public function getCapsuleAPIURL() {
+    public function getCapsuleAPIURL()
+    {
         return $this->_get_capsule_api_url;
     }
 
@@ -778,7 +840,8 @@ class BEIXFClient implements BEIXFClientInterface {
      * Check for the existence of a redirect node
      * if it is there redirect
      */
-    public function checkAndRedirectNode() {
+    public function checkAndRedirectNode()
+    {
         if ($this->capsule) {
             $redirectNode = $this->capsule->getRedirectNode();
             if ($redirectNode != null && !$this->disableRedirect) {
@@ -791,18 +854,21 @@ class BEIXFClient implements BEIXFClientInterface {
     /**
      * Returns whether or not this capsule has redirect node
      */
-    public function hasRedirectNode() {
+    public function hasRedirectNode()
+    {
         if ($this->capsule) {
             $redirectNode = $this->capsule->getRedirectNode();
             return $redirectNode != null;
         }
+
         return false;
     }
 
     /**
      * Returns whether or not this capsule has redirect node
      */
-    public function getRedirectNodeInfo() {
+    public function getRedirectNodeInfo()
+    {
         $retInfo = null;
         if ($this->capsule) {
             $redirectNode = $this->capsule->getRedirectNode();
@@ -811,18 +877,22 @@ class BEIXFClient implements BEIXFClientInterface {
                              $redirectNode->getRedirectURL());
             }
         }
+
         return $retInfo;
     }
 
-    public function hasFeatureString($node_type, $feature_group) {
+    public function hasFeatureString($node_type, $feature_group)
+    {
         return $this->getFeatureStringWrapper($node_type, $feature_group, true, self::$TAG_NONE);
     }
 
-    public function getFeatureString($node_type, $feature_group, $tagFormat) {
+    public function getFeatureString($node_type, $feature_group, $tagFormat)
+    {
         return $this->getFeatureStringWrapper($node_type, $feature_group, false, $tagFormat);
     }
 
-    public function getFeatureStringWrapper($node_type, $feature_group, $checkOnly, $tagFormat) {
+    public function getFeatureStringWrapper($node_type, $feature_group, $checkOnly, $tagFormat)
+    {
         $sb = "";
         $hasContent = false;
         $startTime = round(microtime(true) * 1000);
@@ -843,94 +913,86 @@ class BEIXFClient implements BEIXFClientInterface {
                     $hasContent = true;
                 }
             } else {
-                array_push($this->errorMessages,
-                    'CM ' . $node_type . ' node, feature_group ' . $feature_group);
-            }
-        } else if ($this->isLocalContentMode()) {
-            if ($this->useFlatFileForLocalFile()) {
-                if (isset($this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG]) && $this->config[self::$PAGE_INDEPENDENT_MODE_CONFIG] == "true") {
-                    $nodestr_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
-                            "local_content", "global", $node_type, $feature_group . ".html"));
-                } else {
-                    $page_path_for_local_path = $this->convertPagePathToLocalPath($this->_normalized_url);
-                    $nodestr_resource_file = join(DIRECTORY_SEPARATOR,
-                        array($this->config[self::$CONTENT_BASE_PATH_CONFIG],
-                            "local_content", $this->config[self::$ACCOUNT_ID_CONFIG], $page_path_for_local_path,
-                            $node_type, $feature_group . ".html"));
-
-                }
-                if (!file_exists($nodestr_resource_file)) {
-                    array_push($this->errorMessages,
-                        'node str resource file=' . $nodestr_resource_file . " doesn't exist.");
-                } else {
-                    $sb .= file_get_contents($nodestr_resource_file);
-                }
-
+                array_push(
+                    $this->errorMessages,
+                    'CM ' . $node_type . ' node, feature_group ' . $feature_group
+                );
             }
         }
-
         $elapsedTime = round(microtime(true) * 1000) - $startTime;
         $profileName = "getFeatureString";
         if ($checkOnly) {
             $profileName = "checkFeatureString";
         }
+
         $this->addtoProfileHistory($profileName, $elapsedTime);
 
         if ($checkOnly) {
             return $hasContent;
         }
+
         if ($tagFormat !== self::$TAG_NONE) {
             if ($node_type != Node::$NODE_TYPE_BODYSTR || $this->debugMode) {
                 $sb = "\n<!-- be_ixf, " . $node_type .", " . $feature_group . " -->\n" . $sb;
             }
         }
+
         return $sb;
     }
 
-    public function close() {
+    public function close()
+    {
         $sb = "";
         $sb .= $this->generateEndingTags(self::$CLOSE_BLOCKTYPE, null, null, null, null, 0, 0, self::$TAG_BLOCK);
         return $sb;
     }
 
-    public function getHeadOpen() {
+    public function getHeadOpen()
+    {
         $sb = $this->getHeadOpenDiagString();
         $sb .= $this->getFeatureString(Node::$NODE_TYPE_HEADSTR, Node::$FEATURE_GROUP_HEAD_OPEN, self::$TAG_NONE);
         return $sb;
     }
 
-    public function getBodyOpen($tag_format=1) {
+    public function getBodyOpen($tag_format=1)
+    {
         return $this->getFeatureString(Node::$NODE_TYPE_BODYSTR, Node::$FEATURE_GROUP_BODY_OPEN, $tag_format);
     }
 
-    public function getHeadString($feature_group) {
+    public function getHeadString($feature_group)
+    {
         return $this->getFeatureString(Node::$NODE_TYPE_HEADSTR, $feature_group, self::$TAG_NONE);
     }
 
-    public function getBodyString($feature_group, $tag_format=3) {
+    public function getBodyString($feature_group, $tag_format=3)
+    {
         return $this->getFeatureString(Node::$NODE_TYPE_BODYSTR, $feature_group, $tag_format);
     }
 
-    public function getCleanString($type, $feature_group){
+    public function getCleanString($type, $feature_group)
+    {
         return $this->getFeatureString($type, $feature_group, self::$TAG_NONE);
     }
 
-    public function hasHeadString($feature_group) {
+    public function hasHeadString($feature_group)
+    {
         return $this->hasFeatureString(Node::$NODE_TYPE_HEADSTR, $feature_group);
     }
 
-    public function hasBodyString($feature_group) {
+    public function hasBodyString($feature_group)
+    {
         return $this->hasFeatureString(Node::$NODE_TYPE_BODYSTR, $feature_group);
     }
 }
 
-function deserializeCapsuleJson($capsule_json) {
+function deserializeCapsuleJson($capsule_json)
+{
     $capsule_array = json_decode($capsule_json);
     // JSON is invalid
     if ($capsule_array == NULL) {
         return NULL;
     }
+
     $capsule = new Capsule();
     $capsule->setVersion($capsule_array->capsule_version);
     $capsule->setAccountId($capsule_array->account_id);
@@ -940,6 +1002,7 @@ function deserializeCapsuleJson($capsule_json) {
     if (isset($capsule_array->config)) {
         $capsule->setconfigList($capsule_array->config);
     }
+
     if (isset($capsule_array->page_group_nodes)) {
         $capsule->setAllPageGroupNodes($capsule_array->page_group_nodes);
     }
@@ -953,6 +1016,7 @@ function deserializeCapsuleJson($capsule_json) {
         if (isset($node_obj->meta_string)) {
             $node->setMetaString($node_obj->meta_string);
         }
+
         $node->setDateCreated((float) $node_obj->date_created);
         $node->setDatePublished((float) $node_obj->date_published);
 
@@ -972,13 +1036,16 @@ function deserializeCapsuleJson($capsule_json) {
         if (isset($node_obj->redirect_url)) {
             $node->setRedirectURL($node_obj->redirect_url);
         }
+
         array_push($node_list, $node);
     }
+
     $capsule->setCapsuleNodeList($node_list);
     return $capsule;
 }
 
-function updateCapsule($capsule, $originalUrl, $normalizedURL, $userAgent) {
+function updateCapsule($capsule, $originalUrl, $normalizedURL, $userAgent)
+{
     try {
         $configList = $capsule->getConfigList();
         $auto_redirect_url = $originalUrl;
@@ -998,6 +1065,7 @@ function updateCapsule($capsule, $originalUrl, $normalizedURL, $userAgent) {
                 $capsule->setCapsuleNodeList($capsuleNodeList);
             }
         }
+
         if ($configList != null && isset($configList->page_groups) && $auto_redirect_url == $originalUrl) {
             $page_groups = $configList->page_groups;
             $pageGroupEngine = new PageGroupEngine();
@@ -1014,9 +1082,11 @@ function updateCapsule($capsule, $originalUrl, $normalizedURL, $userAgent) {
                     if (isset($node_obj->meta_string)) {
                         $node->setMetaString($node_obj->meta_string);
                     }
+
                     if (isset($node_obj->date_created)) {
                         $node->setDateCreated((float) $node_obj->date_created);
                     }
+
                     if (isset($node_obj->date_published)) {
                         $node->setDatePublished((float) $node_obj->date_published);
                     }
@@ -1028,8 +1098,10 @@ function updateCapsule($capsule, $originalUrl, $normalizedURL, $userAgent) {
                     if (isset($node_obj->feature_group)) {
                         $node->setFeatureGroup($node_obj->feature_group);
                     }
+
                     array_push($page_group_nodes, $node);
                 }
+
                 $capsule->setPageGroupNodes($page_group_nodes);
             }
         }
@@ -1038,19 +1110,23 @@ function updateCapsule($capsule, $originalUrl, $normalizedURL, $userAgent) {
     }
 }
 
-function buildCapsuleWrapper($capsule_json, $original_url, $normalized_url, $userAgent) {
+function buildCapsuleWrapper($capsule_json, $original_url, $normalized_url, $userAgent)
+{
     $capsule = deserializeCapsuleJson($capsule_json);
     if ($capsule == NULL) {
         return $capsule;
     }
+
     $redirect_present = $capsule->getRedirectNode();
     if ($redirect_present == null) {
         $capsule = updateCapsule($capsule, $original_url, $normalized_url, $userAgent);
     }
+
     return $capsule;
 }
 
-class Node {
+class Node
+{
     protected $type;
     protected $dateCreated;
     protected $datePublished;
@@ -1071,77 +1147,99 @@ class Node {
     public static $FEATURE_GROUP_HEAD_OPEN = '_head_open';
     public static $FEATURE_GROUP_BODY_OPEN = '_body_open';
 
-    public function __construct() {
+    public function __construct()
+    {
     }
 
-    public function getType() {
+    public function getType()
+    {
         return $this->type;
     }
 
-    public function setType($type) {
+    public function setType($type)
+    {
         $this->type = $type;
     }
 
-    public function getFeatureGroup() {
+    public function getFeatureGroup()
+    {
         return $this->feature_group;
     }
 
-    public function setFeatureGroup($feature_group) {
+    public function setFeatureGroup($feature_group)
+    {
         $this->feature_group = $feature_group;
     }
 
-    public function getDateCreated() {
+    public function getDateCreated()
+    {
         return $this->dateCreated;
     }
 
-    public function setDateCreated($dateCreated) {
+    public function setDateCreated($dateCreated)
+    {
         $this->dateCreated = $dateCreated;
     }
-    public function getDatePublished() {
+    public function getDatePublished()
+    {
         return $this->datePublished;
     }
-    public function setDatePublished($datePublished) {
+    public function setDatePublished($datePublished)
+    {
         $this->datePublished = $datePublished;
     }
-    public function getPublishingEngine() {
+    public function getPublishingEngine()
+    {
         return $this->publishingEngine;
     }
-    public function setPublishingEngine($publishingEngine) {
+    public function setPublishingEngine($publishingEngine)
+    {
         $this->publishingEngine = $publishingEngine;
     }
-    public function getEngineVersion() {
+    public function getEngineVersion()
+    {
         return $this->engineVersion;
     }
-    public function setEngineVersion($engineVersion) {
+    public function setEngineVersion($engineVersion)
+    {
         $this->engineVersion = $engineVersion;
     }
-    public function getMetaString() {
+    public function getMetaString()
+    {
         return $this->metaString;
     }
-    public function setMetaString($metaString) {
+    public function setMetaString($metaString)
+    {
         $this->metaString = $metaString;
     }
-    public function getContent() {
+    public function getContent()
+    {
         return $this->content;
     }
-    public function setContent($content) {
+    public function setContent($content)
+    {
         $this->content = $content;
     }
-    public function getRedirectType() {
+    public function getRedirectType()
+    {
         return $this->redirectType;
     }
-    public function setRedirectType($redirectType) {
+    public function setRedirectType($redirectType)
+    {
         $this->redirectType = $redirectType;
     }
-    public function getRedirectURL() {
+    public function getRedirectURL()
+    {
         return $this->redirectURL;
     }
-    public function setRedirectURL($redirectURL) {
+    public function setRedirectURL($redirectURL)
+    {
         $this->redirectURL = $redirectURL;
     }
 }
 
-class Capsule {
+class Capsule
+{
     protected $accountId;
     protected $publishingEngine;
     protected $dateCreated;
@@ -1153,14 +1251,16 @@ class Capsule {
     protected $allPageGroupNodes;
     protected $pageGroup;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->capsuleNodeList = null;
         $this->pageGroupNodes = null;
         $this->allPageGroupNodes = null;
         $this->pageGroup = null;
     }
 
-    public function getConfigList() {
+    public function getConfigList()
+    {
         if ($this->configList == null) {
             return null;
         } else {
@@ -1168,36 +1268,44 @@ class Capsule {
         }
     }
 
-    public function getInitStringNode() {
+    public function getInitStringNode()
+    {
         if ($this->capsuleNodeList == null) {
             return null;
         }
+
         foreach ($this->capsuleNodeList as $node) {
             if ($node->getType() == Node::$NODE_TYPE_INITSTR) {
                 return $node;
             }
         }
+
         return null;
     }
 
-    public function getAllPageGroupNodes() {
+    public function getAllPageGroupNodes()
+    {
         $allPageGroupNodesArray = $this->allPageGroupNodes;
         return $allPageGroupNodesArray;
     }
 
-    public function getRedirectNode() {
+    public function getRedirectNode()
+    {
         if ($this->capsuleNodeList == null) {
             return null;
         }
+
         foreach ($this->capsuleNodeList as $node) {
             if ($node->getType() == Node::$NODE_TYPE_REDIRECT) {
                 return $node;
             }
         }
+
         return null;
     }
 
-    public function getNode($node_type, $feature_group) {
+    public function getNode($node_type, $feature_group)
+    {
         $return_node = null;
         $capsuleNodeList = null;
         $capsuleNodeList = $this->capsuleNodeList;
@@ -1208,6 +1316,7 @@ class Capsule {
                 $return_node = $node;
             }
         }
+
         // if pageGroupNodes is set override the feature group with the page group specific nodes, in case
         // feature group occurs in the node list common to all page groups (eg. _head_open) return the common version.
         if (isset($this->pageGroupNodes)) {
@@ -1222,71 +1331,88 @@ class Capsule {
         return $return_node;
     }
 
-    public function getCapsuleNodeList() {
+    public function getCapsuleNodeList()
+    {
         return $this->capsuleNodeList;
     }
 
-    public function setCapsuleNodeList($capsuleNodeList) {
+    public function setCapsuleNodeList($capsuleNodeList)
+    {
         $this->capsuleNodeList = $capsuleNodeList;
     }
 
-    public function getVersion() {
+    public function getVersion()
+    {
         return $this->version;
     }
 
-    public function setVersion($version) {
+    public function setVersion($version)
+    {
         $this->version = $version;
     }
 
-    public function getAccountId() {
+    public function getAccountId()
+    {
         return $this->accountId;
     }
 
-    public function getPublishingEngine() {
+    public function getPublishingEngine()
+    {
         return $this->publishingEngine;
     }
 
-    public function setPublishingEngine($publishingEngine) {
+    public function setPublishingEngine($publishingEngine)
+    {
         $this->publishingEngine = $publishingEngine;
     }
 
-    public function setAccountId($accountId) {
+    public function setAccountId($accountId)
+    {
         $this->accountId = $accountId;
     }
 
-    public function getDateCreated() {
+    public function getDateCreated()
+    {
         return $this->dateCreated;
     }
 
-    public function setDateCreated($dateCreated) {
+    public function setDateCreated($dateCreated)
+    {
         $this->dateCreated = $dateCreated;
     }
 
-    public function getDatePublished() {
+    public function getDatePublished()
+    {
         return $this->datePublished;
     }
 
-    public function getPageGroup() {
+    public function getPageGroup()
+    {
         return $this->pageGroup;
     }
 
-    public function setDatePublished($datePublished) {
+    public function setDatePublished($datePublished)
+    {
         $this->datePublished = $datePublished;
     }
 
-    public function setConfigList($configList) {
+    public function setConfigList($configList)
+    {
         $this->configList = $configList;
     }
 
-    public function setPageGroupNodes($pageGroupNodes) {
+    public function setPageGroupNodes($pageGroupNodes)
+    {
         $this->pageGroupNodes = $pageGroupNodes;
     }
 
-    public function setAllPageGroupNodes($allPageGroupNodes) {
+    public function setAllPageGroupNodes($allPageGroupNodes)
+    {
         $this->allPageGroupNodes = $allPageGroupNodes;
     }
 
-    public function setPageGroup($pageGroup) {
+    public function setPageGroup($pageGroup)
+    {
         $this->pageGroup = $pageGroup;
     }
 
@@ -1295,12 +1421,14 @@ class Capsule {
      * @param $milSec: million seconds
      * @return string: "py_2019; pm_07; pd_26; ph_11; pmh_51; p_epoch:1564167114318"
      */
-    public function getDatetimeStrFromMilSec($milSec) {
+    public function getDatetimeStrFromMilSec($milSec)
+    {
         return date('p\y_Y;p\m_m;p\d_d;p\h_H;p\m\h_i;', intval($milSec/1000)) . 'p_epoch:' . $milSec;
     }
 }
 
-class IXFSDKUtils {
+class IXFSDKUtils
+{
 
     public static $SQL_KEYS = array("union",
                                     "information_schema",
@@ -1318,12 +1446,14 @@ class IXFSDKUtils {
                                     "where"
                                 );
 
-    public static function isBitEnabled($bit_field, $bit) {
+    public static function isBitEnabled($bit_field, $bit)
+    {
         $bit_mask = (1 << $bit);
         return (bool) ($bit_field & $bit_mask);
     }
 
-    public static function validateGetBoolValue($val) {
+    public static function validateGetBoolValue($val)
+    {
         if (!isset($val) || strlen($val) == 0) return false;
 
         $normVal = strtolower($val);
@@ -1333,7 +1463,8 @@ class IXFSDKUtils {
         return false;
     }
 
-    public static function getSignedNumber($number) {
+    public static function getSignedNumber($number)
+    {
         $bitLength = 32;
         $mask = pow(2, $bitLength) - 1;
         $testMask = 1 << ($bitLength - 1);
@@ -1347,7 +1478,8 @@ class IXFSDKUtils {
     /**
      * Convert url to a hash number, this func is to match JS version for IX link block
      */
-    public static function getPageHash($url) {
+    public static function getPageHash($url)
+    {
         $hash = 0;
 
         $strlen = strlen($url);
@@ -1370,7 +1502,8 @@ class IXFSDKUtils {
         }
     }
 
-    private static function proper_parse_str($str) {
+    private static function proper_parse_str($str)
+    {
         // result array
         $arr = array();
         // split on outer delimiter
@@ -1396,6 +1529,7 @@ class IXFSDKUtils {
                 $arr[$name] = $value;
             }
         }
+
         // return result array
         return $arr;
     }
@@ -1407,7 +1541,8 @@ class IXFSDKUtils {
      *  canonicalHost can be in host or host:port form
      *  @param canonicalProtocol
      */
-    public static function overrideHostOrProtocolInURL($url, $canonicalHost, $canonicalProtocol){
+    public static function overrideHostOrProtocolInURL($url, $canonicalHost, $canonicalProtocol)
+    {
         $canonicalPort = - 1;
         $url_parts = parse_url($url);
         if ($canonicalHost != null) {
@@ -1416,17 +1551,21 @@ class IXFSDKUtils {
                 $canonicalHost = $parts[0];
                 $canonicalPort = $parts[1];
             }
+
             $url_parts['host'] = $canonicalHost;
             if ($canonicalPort > 0) {
                 $url_parts['port'] = $canonicalPort;
             }
         }
+
         if (($url_parts['scheme'] == 'http' && $canonicalPort == 80) || ($url_parts['scheme'] == 'https' && $canonicalPort == 443)) {
             $url_parts['port'] = null;
         }
+
         if ($canonicalProtocol != null) {
             $url_parts['scheme'] = $canonicalProtocol;
         }
+
         $url = (isset($url_parts['scheme']) ? "{$url_parts['scheme']}:" : '') .
         ((isset($url_parts['user']) || isset($url_parts['host'])) ? '//' : '') .
         (isset($url_parts['user']) ? "{$url_parts['user']}" : '') .
@@ -1443,11 +1582,13 @@ class IXFSDKUtils {
     /**
      * Check if any of the parameters are in the url
      */
-    public static function parametersInURL($url, $parameterArray) {
+    public static function parametersInURL($url, $parameterArray)
+    {
         $url_parts = parse_url($url);
         if ($parameterArray == null || count($parameterArray) <= 0 || !isset($url_parts['query'])) {
             return false;
         }
+
         $query_string_keep = array();
         $qs_array = self::proper_parse_str($url_parts['query']);
         foreach ($qs_array as $key => $value) {
@@ -1455,6 +1596,7 @@ class IXFSDKUtils {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -1464,7 +1606,8 @@ class IXFSDKUtils {
      * @param string $url
      * @return string sanitized url with no sql keys (if any)
      */
-    public static function sanitizeURLToRemoveSQLQueries($url) {
+    public static function sanitizeURLToRemoveSQLQueries($url)
+    {
         $url_parts = parse_url($url);
         $sanitized_url = $url_parts['scheme'] . '://' . $url_parts['host'];
         if (isset($url_parts['port'])) {
@@ -1477,15 +1620,17 @@ class IXFSDKUtils {
         if (isset($url_parts['path'])) {
             $sanitized_url .= $url_parts['path'];
         }
+
         if (isset($url_parts['query'])) {
             $query_string_keep = array();
             $qs_array = self::proper_parse_str($url_parts['query']);
             foreach ($qs_array as $key => $value) {
                 // check if $key is a SQL key
-                if ( !in_array(strtolower($key), self::$SQL_KEYS)) {
+                if (!in_array(strtolower($key), self::$SQL_KEYS)) {
                     $query_string_keep[$key] = $value;
                 }
             }
+
             if (count($query_string_keep) > 0) {
                 $sanitized_url .= "?";
                 $first = true;
@@ -1496,11 +1641,13 @@ class IXFSDKUtils {
                             if (!$first) {
                                 $sanitized_url .= "&";
                             }
+
                             if (isset($value_scalar)) {
                                 $sanitized_url .= $key . "=" . $value_scalar;
                             } else {
                                 $sanitized_url .= $key;
                             }
+
                             if ($first) {
                                 $first = false;
                             }
@@ -1509,22 +1656,26 @@ class IXFSDKUtils {
                         if (!$first) {
                             $sanitized_url .= "&";
                         }
+
                         if (isset($value)) {
                             $sanitized_url .= $key . "=" . $value;
                         } else {
                             $sanitized_url .= $key;
                         }
                     }
+
                     if ($first) {
                         $first = false;
                     }
                 }
             }
         }
+
         return $sanitized_url;
     }
 
-    public static function normalizeURL($url, $whitelistParameters) {
+    public static function normalizeURL($url, $whitelistParameters)
+    {
         $url_parts = parse_url($url);
         $normalized_url = $url_parts['scheme'] . '://' . $url_parts['host'];
         if (isset($url_parts['port'])) {
@@ -1533,10 +1684,12 @@ class IXFSDKUtils {
                 $normalized_url .= ':' . $url_parts['port'];
             }
         }
+
 //        print_r($url_parts);
         if (isset($url_parts['path'])) {
             $normalized_url .= $url_parts['path'];
         }
+
         if ($whitelistParameters != null && count($whitelistParameters) > 0 && isset($url_parts['query'])) {
             $query_string_keep = array();
             $qs_array = self::proper_parse_str($url_parts['query']);
@@ -1546,6 +1699,7 @@ class IXFSDKUtils {
                     $query_string_keep[$key] = $value;
                 }
             }
+
             // sort the query_string_keep by array key
             ksort($query_string_keep);
             if (count($query_string_keep) > 0) {
@@ -1558,11 +1712,13 @@ class IXFSDKUtils {
                             if (!$first) {
                                 $normalized_url .= "&";
                             }
+
                             if (isset($value_scalar)) {
                                 $normalized_url .= $key . "=" . $value_scalar;
                             } else {
                                 $normalized_url .= $key;
                             }
+
                             if ($first) {
                                 $first = false;
                             }
@@ -1571,28 +1727,35 @@ class IXFSDKUtils {
                         if (!$first) {
                             $normalized_url .= "&";
                         }
+
                         if (isset($value)) {
                             $normalized_url .= $key . "=" . $value;
                         } else {
                             $normalized_url .= $key;
                         }
                     }
+
                     if ($first) {
                         $first = false;
                     }
                 }
             }
         }
+
         return $normalized_url;
     }
 
-    public static function userAgentMatchesRegex($user_agent, $user_agent_regex) {
+    public static function userAgentMatchesRegex($user_agent, $user_agent_regex)
+    {
         if ($user_agent === NULL) {
             return false;
         }
-        if (preg_match("/" . $user_agent_regex . "/i", $user_agent)) {
+
+        $escapedRegex = preg_quote($user_agent_regex, '/');
+        if (preg_match("/" . $escapedRegex . "/i", $user_agent)) {
             return true;
         }
+
         return false;
     }
 
@@ -1603,7 +1766,8 @@ class IXFSDKUtils {
      * Return date in this form: iy_2017; im_36; id_21; ih_11; imh_36; i_epoch:1503340561789
      * This function is not thread safe (PHP doesn't support this today)
      */
-    public static function convertToNormalizedGoogleIndexTimeZone($epochTimeInMillis, $prefix) {
+    public static function convertToNormalizedGoogleIndexTimeZone($epochTimeInMillis, $prefix)
+    {
         $sb = "";
         $current_timezone = @date_default_timezone_get();
         $updated_prefix = "";
@@ -1612,6 +1776,7 @@ class IXFSDKUtils {
                 $updated_prefix .= "\\" . $chr;
             }
         }
+
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
             // $sb .= strftime("${prefix}y_%Y; ${prefix}m_%m; ${prefix}d_%d; ${prefix}h_%H; ${prefix}mh_%M; ", $epochTimeInMillis / 1000);
@@ -1626,7 +1791,8 @@ class IXFSDKUtils {
     /**
      * Return date in this form: ym_201901 d_12; ct_50
      */
-   public static function convertToNormalizedGoogleIndexTimeZoneWithTimer($epochTimeInMillis, $timer, $prefix = "") {
+   public static function convertToNormalizedGoogleIndexTimeZoneWithTimer($epochTimeInMillis, $timer, $prefix = "")
+   {
         $sb = "";
         $current_timezone = @date_default_timezone_get();
         $updated_prefix = "";
@@ -1635,6 +1801,7 @@ class IXFSDKUtils {
                 $updated_prefix .= "\\" . $chr;
             }
         }
+
         try {
             date_default_timezone_set(self::$NORMALIZED_TIMEZONE);
             // $sb .= strftime("${prefix}ym_%Y%m ${prefix}d_%d; ", $epochTimeInMillis / 1000);
@@ -1644,9 +1811,10 @@ class IXFSDKUtils {
         } finally {
             date_default_timezone_set($current_timezone);
         }
-    }
+   }
 
-    public static function convertToNormalizedTimeZone($epochTimeInMillis, $prefix) {
+    public static function convertToNormalizedTimeZone($epochTimeInMillis, $prefix)
+    {
         $sb = "";
         $current_timezone = @date_default_timezone_get();
         try {
@@ -1663,21 +1831,26 @@ class IXFSDKUtils {
     /**
      * Return rounded elapsed time as per the precision, default 50
      */
-    public static function roundUpElapsedTime($timer, $precision = 50) {
+    public static function roundUpElapsedTime($timer, $precision = 50)
+    {
         return (ceil($timer) % $precision === 0) ? ceil($timer) : round(($timer + $precision / 2 ) / $precision) * $precision;
     }
 
 }
 
-class Rule {
+class Rule
+{
 
     public static $CASE_LOWER = 0;
 
     public static $CASE_UPPER = 1;
 
-    public function __construct() {}
+    public function __construct()
+    {
+    }
 
-    public static function evaluateRule($pattern, $replacement, $string, $caseInSensitiveMatch) {
+    public static function evaluateRule($pattern, $replacement, $string, $caseInSensitiveMatch)
+    {
         $sb = $string;
         $matched = false;
         try {
@@ -1686,6 +1859,7 @@ class Rule {
             } else {
                 $patternString = "/" . $pattern . "/";
             }
+
             $matched = preg_match($patternString, $string) == 1;
             $sb = preg_replace($patternString, $replacement, $string);
         } finally {
@@ -1693,7 +1867,8 @@ class Rule {
         }
     }
 
-    public static function changeCase($case, $string) {
+    public static function changeCase($case, $string)
+    {
         $sb = $string;
         $matched = false;
         try {
@@ -1710,7 +1885,8 @@ class Rule {
     }
 }
 
-class RuleEngine {
+class RuleEngine
+{
 
     protected $rulesArray;
 
@@ -1728,17 +1904,22 @@ class RuleEngine {
 
     public static $RULE_FLAG_CASE_INSENSITIVE = 1;
 
-    public function __construct() {}
+    public function __construct()
+    {
+    }
 
-    public function setRulesArray($rulesList) {
+    public function setRulesArray($rulesList)
+    {
         $this->rulesArray = json_decode(json_encode($rulesList), true);
     }
 
-    public function getRulesArray() {
+    public function getRulesArray()
+    {
         return $this->rulesArray;
     }
 
-    public static function build_url(array $parts) {
+    public static function build_url(array $parts)
+    {
         return (isset($parts['scheme']) ? "{$parts['scheme']}:" : '') .
              ((isset($parts['user']) || isset($parts['host'])) ? '//' : '') .
              (isset($parts['user']) ? "{$parts['user']}" : '') . (isset($parts['pass']) ? ":{$parts['pass']}" : '') .
@@ -1748,7 +1929,8 @@ class RuleEngine {
              (isset($parts['fragment']) ? "#{$parts['fragment']}" : '');
     }
 
-    public function evaluateRules($original_url, $userAgent) {
+    public function evaluateRules($original_url, $userAgent)
+    {
         $server_user_agent = $userAgent;
         $rules = $this->rulesArray;
         foreach ($rules as $rule) {
@@ -1763,6 +1945,7 @@ class RuleEngine {
                 !(IXFSDKUtils::userAgentMatchesRegex($server_user_agent, $rule['user_agent_regex']))) {
                 continue;
             }
+
             switch ($ruleType) {
                 case self::$RULE_TYPE_CASE_PARAMETER:
                     $case = $rule['case'];
@@ -1770,6 +1953,7 @@ class RuleEngine {
                         $outputArray = Rule::changeCase($case, $urlParts['query']);
                         $urlParts['query'] = $outputArray[0];
                     }
+
                     $output = RuleEngine::build_url($urlParts);
                     break;
                 case self::$RULE_TYPE_CASE_PATH:
@@ -1778,6 +1962,7 @@ class RuleEngine {
                         $outputArray = Rule::changeCase($case, $urlParts['path']);
                         $urlParts['path'] = $outputArray[0];
                     }
+
                     $output = RuleEngine::build_url($urlParts);
                     break;
                 case self::$RULE_TYPE_REGEX:
@@ -1790,66 +1975,84 @@ class RuleEngine {
                     $pattern = $rule['source_regex'];
                     $replacement = $rule['replacement_regex'];
                     if (isset($urlParts['query'])) {
-                        $outputArray = Rule::evaluateRule($pattern, $replacement, $urlParts['query'],
-                            $caseInSensitiveMatch);
+                        $outputArray = Rule::evaluateRule(
+                            $pattern, $replacement, $urlParts['query'],
+                            $caseInSensitiveMatch
+                        );
                         $urlParts['query'] = $outputArray[0];
                     }
+
                     $output = RuleEngine::build_url($urlParts);
                     break;
                 case self::$RULE_TYPE_REGEX_PATH:
                     $pattern = $rule['source_regex'];
                     $replacement = $rule['replacement_regex'];
                     if (isset($urlParts['path'])) {
-                        $outputArray = Rule::evaluateRule($pattern, $replacement, $urlParts['path'],
-                            $caseInSensitiveMatch);
+                        $outputArray = Rule::evaluateRule(
+                            $pattern, $replacement, $urlParts['path'],
+                            $caseInSensitiveMatch
+                        );
                         $urlParts['path'] = $outputArray[0];
                     }
+
                     $output = RuleEngine::build_url($urlParts);
                     break;
                 default:
                     $output = $original_url;
             }
+
             if (isset($outputArray)) {
                 $match = $outputArray[1];
             }
+
             if (IXFSDKUtils::isBitEnabled($rule['flag'], self::$RULE_FLAG_LAST_RULE) && $match) {
                 return $output;
             } else {
                 $original_url = $output;
             }
         }
+
         return $original_url;
     }
 }
 
-class PageGroupEngine {
+class PageGroupEngine
+{
 
     protected $pageGroupRules;
 
-    public function __construct() {}
+    public function __construct()
+    {
+    }
 
-    public function setPageGroupRules($pageGroupRules) {
+    public function setPageGroupRules($pageGroupRules)
+    {
         $this->pageGroupRules = json_decode(json_encode($pageGroupRules), true);
     }
 
-    public function getPageGroupsRules() {
+    public function getPageGroupsRules()
+    {
         return $this->pageGroupRules;
     }
 
-    public function evaluateIncludeRules(array $pageGroup, $normalizedUrl) {
+    public function evaluateIncludeRules(array $pageGroup, $normalizedUrl)
+    {
         if (isset($pageGroup['include_rules'])) {
             foreach ($pageGroup['include_rules'] as $regex) {
-                $patternString = "/" . $regex . "/i";
+                // Using # as the regex delimiter.
+                $patternString = "#" . $regex . "#i";
                 $match = preg_match($patternString, $normalizedUrl) == 1;
                 if ($match == true) {
                     return true;
                 }
             }
         }
+
         return false;
     }
 
-    public function deriveCurrentPageGroup($normalizedUrl) {
+    public function deriveCurrentPageGroup($normalizedUrl)
+    {
         $pageGroups = $this->pageGroupRules;
         foreach ($pageGroups as $pageGroup) {
             $excludeMatch = false;
@@ -1857,13 +2060,15 @@ class PageGroupEngine {
             // scan through the exclude rules first
             if (array_key_exists('exclude_rules', $pageGroup) and isset($pageGroup['exclude_rules'])) {
                 foreach ($pageGroup['exclude_rules'] as $regex) {
-                    $patternString = "/" . $regex . "/i";
+                    // Using # as the regex delimiter.
+                    $patternString = "#" . $regex . "#i";
                     $match = preg_match($patternString, $normalizedUrl) == 1;
                     if ($match == true) {
                         $excludeMatch = true;
                         break;
                     }
                 }
+
                 if (!$excludeMatch) {
                     $includeMatch = $this->evaluateIncludeRules($pageGroup, $normalizedUrl);
                     if ($includeMatch == true) {
@@ -1875,9 +2080,10 @@ class PageGroupEngine {
                 //include rule has entries iterate through the rules to find if any of the regex patterns matches
                 if ($includeMatch == true) {
                    return $pageGroupName;
-               }
-           }
-       }
+                }
+            }
+        }
+
        return null;
-   }
+    }
 }

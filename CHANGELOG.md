@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [1.5.15] - 2025-07-01
+
+### Update
+- Added Default account-specific capsule functionality for SCP 2.0.
+- Removed LocalContentMethod or FlatFile method
+
+## [1.5.14] - 2025-03-12
+
+### Fixed
+- Added null check for explode function
+
+## [1.5.13] - 2025-02-24
+
+### Fixed
+- Fixed deprecation warning in PHP 8.1+ by adding validation for encryption key in getAESEncryption() method
+
 ## [1.5.12] - 2023-09-01
 
 ### Update
